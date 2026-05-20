@@ -1,0 +1,2 @@
+# sonomanager
+Gestion inventaire
