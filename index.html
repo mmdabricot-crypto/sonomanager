@@ -583,21 +583,27 @@ tbody tr:hover td{background:var(--bg)}
 </div>
 
 <!-- ══ SHARE MODAL ══ -->
-<div id="share-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:300;align-items:center;justify-content:center;padding:1rem">
-  <div class="share-modal">
-    <div style="padding:1rem 1.25rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
-      <div style="font-weight:600;font-size:15px">📤 Partager le document</div>
-      <button onclick="document.getElementById('share-overlay').style.display='none'" style="border:none;background:none;font-size:18px;cursor:pointer;color:var(--text2)">✕</button>
-    </div>
-    <div style="padding:1.25rem">
-      <div style="background:var(--green-light);border-radius:var(--radius);padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--green-dark)">
-        <strong>Étape 1 :</strong> Téléchargez le PDF, puis joignez-le dans l'application choisie.
+<div id="share-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:300;align-items:flex-start;justify-content:center;padding:1rem;overflow-y:auto">
+  <div style="background:#fff;border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);width:100%;max-width:720px;margin:auto">
+    <!-- Toolbar -->
+    <div style="padding:1rem 1.25rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:#fff;z-index:10;border-radius:var(--radius-lg) var(--radius-lg) 0 0">
+      <div style="font-weight:700;font-size:15px">👁 Aperçu & Partage</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn primary" id="btn-dl-pdf" onclick="dvExportPDFAndShare()">⬇ Télécharger PDF</button>
+        <button class="btn" onclick="document.getElementById('share-overlay').style.display='none'" style="color:var(--text2)">✕ Fermer</button>
       </div>
-      <button class="share-btn-item" onclick="dvExportPDF()" style="background:var(--green)">⬇ Télécharger le PDF</button>
-      <button class="share-btn-item" onclick="dvShareWhatsApp()" style="background:#25D366">💬 Ouvrir WhatsApp</button>
-      <button class="share-btn-item" onclick="dvShareEmail()" style="background:#EA4335">✉️ Ouvrir Email</button>
-      <button class="share-btn-item" onclick="dvShareNative()" style="background:var(--blue)" id="share-native-btn">📲 Partager (mobile)</button>
-      <div style="font-size:11px;color:var(--text3);text-align:center;margin-top:8px">Joignez le PDF téléchargé dans WhatsApp ou Email</div>
+    </div>
+    <!-- Aperçu visuel du document -->
+    <div id="dv-preview-doc" style="padding:2rem;background:#f5f5f5"></div>
+    <!-- Boutons de partage -->
+    <div style="padding:1rem 1.25rem;border-top:1px solid var(--border);background:#fff;border-radius:0 0 var(--radius-lg) var(--radius-lg)">
+      <div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);margin-bottom:10px">Partager via</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="share-btn-item" onclick="dvShareWhatsApp()" style="background:#25D366;flex:1;min-width:120px">💬 WhatsApp</button>
+        <button class="share-btn-item" onclick="dvShareEmail()" style="background:#EA4335;flex:1;min-width:120px">✉️ Email</button>
+        <button class="share-btn-item" onclick="dvShareNative()" style="background:var(--blue);flex:1;min-width:120px" id="share-native-btn">📲 Mobile</button>
+      </div>
+      <div style="font-size:11px;color:var(--text3);margin-top:8px">💡 Téléchargez d'abord le PDF puis joignez-le dans WhatsApp ou Email</div>
     </div>
   </div>
 </div>
@@ -3583,7 +3589,113 @@ function renderDevis(){
   }).join('');
 }
 
-function dvOpenShare(){dvSave();document.getElementById('share-overlay').style.display='flex';if(!navigator.share)document.getElementById('share-native-btn').style.display='none';}
+function dvOpenShare(){
+  dvSave();
+  if(!dvCurrent)return;
+  // Rendre l'aperçu visuel
+  dvRenderPreview();
+  document.getElementById('share-overlay').style.display='flex';
+  if(!navigator.share)document.getElementById('share-native-btn').style.display='none';
+}
+
+function dvRenderPreview(){
+  const d=dvCurrent;if(!d)return;
+  const {sousTotal,remiseMontant,total,acompte,reste}=dvCalcTotaux();
+  const isF=d.type==='facture';
+  const hCol=isF?'#185FA5':'#BA7517';
+  const fmtD=dt=>{if(!dt)return'—';const[y,m,j]=dt.split('-');return`${j}/${m}/${y}`;};
+
+  document.getElementById('dv-preview-doc').innerHTML=`
+    <div style="background:#fff;padding:2rem;font-family:'DM Sans',sans-serif;font-size:13px;color:#111;max-width:680px;margin:0 auto;box-shadow:0 4px 24px rgba(0,0,0,0.12);border-radius:8px">
+      <!-- En-tête -->
+      <div style="background:${hCol};padding:16px 20px;margin:-2rem -2rem 1.5rem;border-radius:8px 8px 0 0;display:flex;justify-content:space-between;align-items:flex-start">
+        <div>
+          <div style="font-size:24px;font-weight:900;letter-spacing:2px;color:#fff">DABRIKSON</div>
+          <div style="font-size:10px;color:rgba(255,255,255,0.8);margin-top:3px">Terrasson près de la salle COCO MANGO, 97139 Les Abymes</div>
+          <div style="font-size:10px;color:rgba(255,255,255,0.8)">Tél: 0690 312083 | dabrikson@gmail.com</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:18px;font-weight:800;color:#fff">${isF?'FACTURE':'DEVIS'}</div>
+          <div style="font-size:12px;color:rgba(255,255,255,0.9)">N° ${esc(d.num)}</div>
+          <div style="font-size:11px;color:rgba(255,255,255,0.8)">Date : ${fmtD(d.dateEdition)}</div>
+        </div>
+      </div>
+
+      <!-- Parties -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:1.5rem">
+        <div style="background:#f8f8f8;border-radius:8px;padding:12px 14px">
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:${hCol};margin-bottom:6px">DEVIS À</div>
+          <div style="font-size:14px;font-weight:700">${esc(d.client.nom||'—')}</div>
+          ${d.client.adresse?`<div style="font-size:11px;color:#666;margin-top:3px">Adresse: ${esc(d.client.adresse)}</div>`:''}
+          ${d.client.tel?`<div style="font-size:11px;color:#666">Tél: ${esc(d.client.tel)}</div>`:''}
+          ${d.client.email?`<div style="font-size:11px;color:#666">${esc(d.client.email)}</div>`:''}
+        </div>
+        <div style="background:#f8f8f8;border-radius:8px;padding:12px 14px">
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:${hCol};margin-bottom:6px">POUR</div>
+          <div style="font-size:14px;font-weight:700">${esc(d.objet||'Prestation')}</div>
+          <div style="font-size:11px;color:#666;margin-top:3px">Pour le : ${fmtD(d.datePresta)}</div>
+          ${d.client.lieu?`<div style="font-size:11px;color:#666">Lieu : ${esc(d.client.lieu)}</div>`:''}
+        </div>
+      </div>
+
+      <!-- Tableau lignes -->
+      <table style="width:100%;border-collapse:collapse;margin-bottom:1.5rem;font-size:12px">
+        <thead>
+          <tr style="background:${hCol}">
+            <th style="color:#fff;text-align:left;padding:8px 10px;font-size:10px;text-transform:uppercase;letter-spacing:.04em;width:55%">DESCRIPTION DE L'ARTICLE</th>
+            <th style="color:#fff;text-align:center;padding:8px 6px;font-size:10px;text-transform:uppercase;width:10%">QTÉ</th>
+            <th style="color:#fff;text-align:right;padding:8px 10px;font-size:10px;text-transform:uppercase;width:17%">PRIX UNIT.</th>
+            <th style="color:#fff;text-align:right;padding:8px 10px;font-size:10px;text-transform:uppercase;width:18%">MONTANT</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${(d.lignes||[]).map((l,i)=>`<tr style="background:${i%2===0?'#fff':'#f5f8ff'}">
+            <td style="padding:10px;border-bottom:1px solid #eee;vertical-align:top;line-height:1.5">${esc(l.desc||'—')}</td>
+            <td style="padding:10px;border-bottom:1px solid #eee;text-align:center;font-family:'DM Mono',monospace">${l.qte||1}</td>
+            <td style="padding:10px;border-bottom:1px solid #eee;text-align:right;font-family:'DM Mono',monospace">${dvFmt(l.pu||0)} €</td>
+            <td style="padding:10px;border-bottom:1px solid #eee;text-align:right;font-family:'DM Mono',monospace;font-weight:600">${dvFmt((l.qte||1)*(l.pu||0))} €</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+
+      <!-- Totaux -->
+      <div style="display:flex;flex-direction:column;align-items:flex-end;margin-bottom:1.5rem">
+        ${remiseMontant>0?`
+          <div style="display:flex;justify-content:space-between;min-width:260px;padding:5px 0;border-bottom:1px solid #eee;font-size:12px">
+            <span>Sous-total</span><span style="font-family:'DM Mono',monospace">${dvFmt(sousTotal)} €</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;min-width:260px;padding:5px 0;border-bottom:1px solid #eee;font-size:12px;color:#A32D2D">
+            <span>Remise</span><span style="font-family:'DM Mono',monospace">-${dvFmt(remiseMontant)} €</span>
+          </div>`:''}
+        ${isF&&acompte>0?`
+          <div style="display:flex;justify-content:space-between;min-width:260px;padding:5px 0;border-bottom:1px solid #eee;font-size:12px;color:#059669">
+            <span>Acompte reçu</span><span style="font-family:'DM Mono',monospace">-${dvFmt(acompte)} €</span>
+          </div>`:''}
+        <div style="display:flex;justify-content:space-between;min-width:260px;padding:10px 14px;background:${hCol};color:#fff;border-radius:6px;font-weight:700;font-size:14px;margin-top:8px">
+          <span>${isF&&acompte>0?'RESTE À PAYER':'COÛT TOTAL'}</span>
+          <span style="font-family:'DM Mono',monospace">${dvFmt(isF&&acompte>0?reste:total)} €</span>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div style="border-top:2px solid ${hCol};padding-top:12px">
+        <div style="font-size:10px;color:#666;line-height:1.8">${esc(d.noteFooter||'').replace(/\n/g,'<br>')}</div>
+        <div style="text-align:center;font-size:13px;font-weight:800;color:${hCol};text-transform:uppercase;letter-spacing:2px;margin-top:12px">
+          NOUS VOUS REMERCIONS DE VOTRE CONFIANCE.
+        </div>
+      </div>
+    </div>`;
+}
+
+function dvExportPDFAndShare(){
+  const btn=document.getElementById('btn-dl-pdf');
+  if(btn){btn.textContent='⏳ Génération…';btn.disabled=true;}
+  dvExportPDF();
+  setTimeout(()=>{
+    if(btn){btn.textContent='✅ PDF téléchargé';btn.style.background='var(--green)';}
+    setTimeout(()=>{if(btn){btn.textContent='⬇ Télécharger PDF';btn.style.background='';btn.disabled=false;}},3000);
+  },1500);
+}
 function dvExportPDF(){
   if(!dvCurrent)return;
   loadJsPDF(()=>{
