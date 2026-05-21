@@ -3703,72 +3703,143 @@ function dvExportPDF(onDone){
   if(!dvCurrent)return;
   loadJsPDF(()=>{
     try{
+      // Nettoyage complet pour jsPDF (latin1 uniquement)
+      const safe=s=>{
+        if(s===null||s===undefined)return'';
+        return String(s)
+          .replace(/\u2014|\u2013|\u2012/g,'-')
+          .replace(/\u2019|\u2018|\u2032/g,"'")
+          .replace(/\u201C|\u201D/g,'"')
+          .replace(/\u2026/g,'...')
+          .replace(/\u2022/g,'*')
+          .replace(/\u00e9/g,'e').replace(/\u00e8/g,'e').replace(/\u00ea/g,'e')
+          .replace(/\u00e0/g,'a').replace(/\u00e2/g,'a')
+          .replace(/\u00f4/g,'o').replace(/\u00f9/g,'u').replace(/\u00fb/g,'u')
+          .replace(/\u00ee/g,'i').replace(/\u00ef/g,'i')
+          .replace(/\u00e7/g,'c').replace(/\u00f1/g,'n')
+          .replace(/\u00c9/g,'E').replace(/\u00c8/g,'E').replace(/\u00ca/g,'E')
+          .replace(/\u00c0/g,'A').replace(/\u00c2/g,'A')
+          .replace(/\u00d4/g,'O').replace(/\u00d9/g,'U').replace(/\u00db/g,'U')
+          .replace(/\u00ce/g,'I').replace(/\u00cf/g,'I')
+          .replace(/\u00c7/g,'C').replace(/\u00d1/g,'N')
+          .replace(/[^\x20-\x7E]/g,'?');
+      };
+      const safeDate=d=>{if(!d)return'-';const[y,m,j]=d.split('-');return j+'/'+m+'/'+y;};
       const d=dvCurrent,{sousTotal,remiseMontant,total}=dvCalcTotaux(),isF=d.type==='facture';
       const hCol=isF?[24,95,165]:[186,117,23];
-      const{jsPDF}=window.jspdf,doc=new jsPDF({unit:'mm',format:'a4'}),W=210,mg=15;let y=mg;
+      const{jsPDF}=window.jspdf;
+      const doc=new jsPDF({unit:'mm',format:'a4'});
+      const W=210,mg=15;let y=mg;
+
       doc.setFillColor(...hCol);doc.rect(0,0,W,30,'F');
-      doc.setTextColor(255,255,255);doc.setFontSize(22);doc.setFont('helvetica','bold');doc.text('DABRIKSON',mg,14);
-      doc.setFontSize(9);doc.setFont('helvetica','normal');doc.text('Terrasson près de la salle COCO MANGO, 97139 Les Abymes',mg,20);doc.text('Tél: 0690 312083 | dabrikson@gmail.com',mg,25);
-      doc.setFontSize(14);doc.setFont('helvetica','bold');doc.text(isF?'FACTURE':'DEVIS',W-mg,14,{align:'right'});
-      doc.setFontSize(10);doc.setFont('helvetica','normal');doc.text(`N° ${d.num}`,W-mg,20,{align:'right'});doc.text(`Date : ${dvFmtDate(d.dateEdition)}`,W-mg,25,{align:'right'});
+      doc.setTextColor(255,255,255);
+      doc.setFontSize(22);doc.setFont('helvetica','bold');
+      doc.text('DABRIKSON',mg,14);
+      doc.setFontSize(9);doc.setFont('helvetica','normal');
+      doc.text('Terrasson pres de la salle COCO MANGO, 97139 Les Abymes',mg,20);
+      doc.text('Tel: 0690 312083 | dabrikson@gmail.com',mg,25);
+      doc.setFontSize(14);doc.setFont('helvetica','bold');
+      doc.text(isF?'FACTURE':'DEVIS',W-mg,14,{align:'right'});
+      doc.setFontSize(10);doc.setFont('helvetica','normal');
+      doc.text('N '+safe(d.num),W-mg,20,{align:'right'});
+      doc.text('Date : '+safeDate(d.dateEdition),W-mg,25,{align:'right'});
       y=38;
+
       doc.setFillColor(245,247,250);doc.rect(mg,y,W-mg*2,28,'F');
       doc.setTextColor(80,80,75);doc.setFontSize(8);doc.setFont('helvetica','bold');
       doc.text('DEVIS A',mg+4,y+6);doc.text('POUR',W/2+4,y+6);
       doc.setFont('helvetica','normal');doc.setTextColor(30,30,28);doc.setFontSize(10);
-      doc.text(d.client.nom||'—',mg+4,y+12);
+      doc.text(safe(d.client.nom)||'-',mg+4,y+12);
       doc.setFontSize(8);doc.setTextColor(80,80,75);
-      if(d.client.adresse)doc.text('Adresse: '+d.client.adresse,mg+4,y+17);
-      if(d.client.tel)doc.text('Tel: '+d.client.tel,mg+4,y+22);
-      doc.setFontSize(10);doc.setFont('helvetica','bold');doc.setTextColor(30,30,28);doc.text(d.objet||'Prestation',W/2+4,y+12);
+      if(d.client.adresse)doc.text('Adresse: '+safe(d.client.adresse),mg+4,y+17);
+      if(d.client.tel)doc.text('Tel: '+safe(d.client.tel),mg+4,y+22);
+      doc.setFontSize(10);doc.setFont('helvetica','bold');doc.setTextColor(30,30,28);
+      doc.text(safe(d.objet)||'Prestation',W/2+4,y+12);
       doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(80,80,75);
-      doc.text('Pour le: '+dvFmtDate(d.datePresta),W/2+4,y+17);
-      if(d.client.lieu)doc.text('Lieu: '+d.client.lieu,W/2+4,y+22);
+      doc.text('Pour le: '+safeDate(d.datePresta),W/2+4,y+17);
+      if(d.client.lieu)doc.text('Lieu: '+safe(d.client.lieu),W/2+4,y+22);
       y+=34;
+
       doc.setFillColor(...hCol);doc.rect(mg,y,W-mg*2,8,'F');
       doc.setTextColor(255,255,255);doc.setFontSize(8);doc.setFont('helvetica','bold');
-      doc.text('DESCRIPTION',mg+3,y+5);doc.text('QTE',mg+115,y+5,{align:'center'});doc.text('P.U. EUR',mg+140,y+5,{align:'right'});doc.text('TOTAL EUR',W-mg-2,y+5,{align:'right'});
+      doc.text('DESCRIPTION DE L\'ARTICLE',mg+3,y+5);
+      doc.text('QTE',mg+115,y+5,{align:'center'});
+      doc.text('P.U.',mg+140,y+5,{align:'right'});
+      doc.text('MONTANT',W-mg-2,y+5,{align:'right'});
       y+=10;doc.setFont('helvetica','normal');doc.setTextColor(30,30,28);
+
       (d.lignes||[]).forEach((l,i)=>{
         if(y>265){doc.addPage();y=mg;}
-        if(i%2===0){doc.setFillColor(248,250,255);doc.rect(mg,y-2,W-mg*2,12,'F');}
-        const lines=doc.splitTextToSize(l.desc||'—',90);
-        doc.setFontSize(8);lines.forEach((line,li)=>doc.text(line,mg+3,y+3+li*4));
-        const h=Math.max(10,lines.length*4+4);
-        doc.text(String(l.qte||1),mg+115,y+5,{align:'center'});doc.text(dvFmt(l.pu||0),mg+140,y+5,{align:'right'});
-        doc.setFont('helvetica','bold');doc.text(dvFmt((l.qte||1)*(l.pu||0)),W-mg-2,y+5,{align:'right'});
-        doc.setFont('helvetica','normal');doc.setDrawColor(230,235,245);doc.line(mg,y+h-2,W-mg,y+h-2);y+=h;
+        if(i%2===0){doc.setFillColor(248,250,255);doc.rect(mg,y-2,W-mg*2,14,'F');}
+        const txt=safe(l.desc)||'-';
+        const lines=doc.splitTextToSize(txt,88);
+        doc.setFontSize(8);
+        lines.forEach((line,li)=>doc.text(line,mg+3,y+4+li*4));
+        const h=Math.max(12,lines.length*4+6);
+        doc.text(String(l.qte||1),mg+115,y+6,{align:'center'});
+        doc.text(dvFmt(l.pu||0)+' E',mg+142,y+6,{align:'right'});
+        doc.setFont('helvetica','bold');
+        doc.text(dvFmt((l.qte||1)*(l.pu||0))+' E',W-mg-2,y+6,{align:'right'});
+        doc.setFont('helvetica','normal');
+        doc.setDrawColor(220,225,240);doc.line(mg,y+h-2,W-mg,y+h-2);
+        y+=h;
       });
       y+=4;
-      const totX=W-mg-80;
+
+      // Totaux
+      const totX=W-mg-85;
       const rows=[];
-      if(remiseMontant>0){rows.push({l:'Sous-total',v:dvFmt(sousTotal)+' EUR'});rows.push({l:'Remise',v:'-'+dvFmt(remiseMontant)+' EUR',red:true});}
-      if(d.acompte>0&&isF)rows.push({l:'Acompte recu',v:'-'+dvFmt(d.acompte)+' EUR',green:true});
-      rows.push({l:isF&&d.acompte>0?'RESTE A PAYER':'COUT TOTAL',v:dvFmt(isF&&d.acompte>0?Math.max(0,total-(d.acompte||0)):total)+' EUR',bold:true});
+      if(remiseMontant>0){
+        rows.push({l:'Sous-total',v:dvFmt(sousTotal)+' E'});
+        rows.push({l:'Remise de '+safe(d.remisePct>0?d.remisePct+'%':dvFmt(d.remiseFixe)+' E'),v:'-'+dvFmt(remiseMontant)+' E',red:true});
+      }
+      if(d.acompte>0&&isF)rows.push({l:'Acompte recu',v:'-'+dvFmt(d.acompte)+' E',green:true});
+      const totalLabel=isF&&d.acompte>0?'RESTE A PAYER':'COUT TOTAL';
+      const totalVal=isF&&d.acompte>0?Math.max(0,total-(d.acompte||0)):total;
+      rows.push({l:totalLabel,v:dvFmt(totalVal)+' E',bold:true});
+
+      // Ligne séparatrice
+      if(y>250){doc.addPage();y=mg;}
+      doc.setDrawColor(200,205,215);doc.line(totX,y,W-mg,y);y+=3;
+
       rows.forEach(r=>{
-        if(y>275){doc.addPage();y=mg;}
-        if(r.bold){doc.setFillColor(...hCol);doc.rect(totX,y-2,80,9,'F');doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');}
-        else{doc.setTextColor(r.red?[220,38,38]:r.green?[5,150,105]:[30,30,28]);doc.setFont('helvetica','normal');}
-        doc.setFontSize(9);doc.text(r.l,totX+3,y+4);doc.text(r.v,W-mg-2,y+4,{align:'right'});y+=10;
+        if(y>272){doc.addPage();y=mg;}
+        if(r.bold){
+          doc.setFillColor(...hCol);doc.rect(totX,y-1,W-mg-totX,9,'F');
+          doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(10);
+        }else{
+          doc.setTextColor(r.red?[220,38,38]:r.green?[5,150,105]:[60,60,60]);
+          doc.setFont('helvetica','normal');doc.setFontSize(9);
+        }
+        doc.text(r.l,totX+3,y+5);
+        doc.text(r.v,W-mg-2,y+5,{align:'right'});
+        y+=r.bold?11:9;
       });
-      y+=6;if(y>260){doc.addPage();y=mg;}
+
+      // Footer
+      y+=6;if(y>262){doc.addPage();y=mg;}
       doc.setDrawColor(...hCol);doc.setLineWidth(0.5);doc.line(mg,y,W-mg,y);y+=5;
       doc.setTextColor(100,100,95);doc.setFont('helvetica','normal');doc.setFontSize(8);
-      (d.noteFooter||'').split('\n').forEach(fl=>{doc.text(fl,mg,y);y+=4;});
+      const footerLines=(safe(d.noteFooter)||'').split('\n');
+      footerLines.forEach(fl=>{
+        if(fl.trim()){doc.text(safe(fl),mg,y);y+=4;}
+      });
+      y+=3;
       doc.setFont('helvetica','bold');doc.setTextColor(...hCol);doc.setFontSize(10);
-      doc.text('NOUS VOUS REMERCIONS DE VOTRE CONFIANCE.',W/2,y+6,{align:'center'});
+      doc.text('NOUS VOUS REMERCIONS DE VOTRE CONFIANCE.',W/2,y,{align:'center'});
 
       // Ouvrir le PDF
       const blob=doc.output('blob');
       const url=URL.createObjectURL(blob);
+      const fname=(isF?'Facture':'Devis')+'_'+safe(d.num)+'_'+safe(d.client.nom||'client').replace(/\s+/g,'_')+'.pdf';
       if(/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)){
         const a=document.createElement('a');
-        a.href=url;a.download=`${isF?'Facture':'Devis'}_${d.num}.pdf`;a.click();
+        a.href=url;a.download=fname;a.click();
       }else{
         window.open(url,'_blank');
       }
       setTimeout(()=>URL.revokeObjectURL(url),60000);
-      showToast('✅ PDF ouvert — Ctrl+S ou bouton ⬇ pour enregistrer');
+      showToast('PDF ouvert — Ctrl+S pour enregistrer');
       if(onDone)onDone(true);
     }catch(e){
       console.error('PDF error:',e);
