@@ -246,6 +246,32 @@ tbody tr:hover td{background:var(--bg)}
 .lib-fixture:hover{background:var(--bg)}
 .lib-fixture:last-child{border-bottom:none}
 
+.lum-tabs{display:flex;gap:4px;flex-wrap:wrap;border-bottom:2px solid var(--border);margin-bottom:0;padding-bottom:0}
+.lum-tab{padding:8px 14px;border:none;background:none;font-family:"DM Sans",sans-serif;font-size:13px;color:var(--text2);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .15s;border-radius:6px 6px 0 0}
+.lum-tab:hover{background:var(--gray-light);color:var(--text)}
+.lum-tab.active{color:var(--green-dark);border-bottom-color:var(--green);font-weight:600;background:var(--green-light)}
+.lum-panel{display:none}.lum-panel.active{display:block}
+.dmx-visu-grid{display:grid;grid-template-columns:repeat(32,1fr);gap:2px;margin-bottom:1rem}
+.dmx-cell{height:22px;border-radius:3px;cursor:pointer;position:relative;transition:all .1s;background:var(--bg);border:1px solid var(--border)}
+.dmx-cell.used{background:var(--green);border-color:var(--green-dark)}
+.dmx-cell.conflict{background:var(--red);border-color:var(--red)}
+.dmx-cell:hover .dmx-tooltip{display:block}
+.dmx-tooltip{display:none;position:absolute;bottom:110%;left:50%;transform:translateX(-50%);background:#1a1a18;color:#fff;padding:4px 8px;border-radius:5px;font-size:11px;white-space:nowrap;z-index:10;pointer-events:none}
+.lum-scene-card{background:var(--surface);border-radius:var(--radius-lg);box-shadow:var(--shadow);padding:1rem 1.25rem;border:1.5px solid transparent;margin-bottom:10px}
+.lum-scene-card:hover{border-color:var(--border)}
+.lum-param-row{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid rgba(0,0,0,0.04)}
+.lum-param-row:last-child{border-bottom:none}
+.lum-param-label{font-size:12px;color:var(--text2);min-width:80px;font-weight:500}
+.lum-color-swatch{width:28px;height:28px;border-radius:6px;border:1px solid var(--border);cursor:pointer;flex-shrink:0}
+.palette-chip{width:32px;height:32px;border-radius:6px;cursor:pointer;border:2px solid transparent;transition:all .1s;flex-shrink:0}
+.palette-chip:hover{transform:scale(1.1);border-color:rgba(0,0,0,0.2)}
+.chamsys-section{background:var(--surface);border-radius:var(--radius-lg);box-shadow:var(--shadow);padding:1.25rem;margin-bottom:1rem}
+.chamsys-section-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--blue);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.chamsys-tip{background:var(--blue-light);border-radius:var(--radius);padding:10px 14px;margin-bottom:8px;font-size:13px;line-height:1.6}
+.chamsys-cmd{background:#1a1a18;color:#7EE787;padding:8px 14px;border-radius:6px;font-family:"DM Mono",monospace;font-size:12px;margin:4px 0;cursor:pointer;transition:background .1s}
+.chamsys-cmd:hover{background:#2a2a28}
+.dashboard-card{background:var(--surface);border-radius:var(--radius-lg);box-shadow:var(--shadow);padding:1.25rem;margin-bottom:1rem}
+
 </style>
 </head>
 <body>
@@ -441,35 +467,86 @@ tbody tr:hover td{background:var(--bg)}
 
     <!-- ══ ÉCLAIRAGE ══ -->
     <div class="panel" id="panel-lumiere">
-      <div id="lum-list-view">
-        <div class="toolbar">
+      <div class="lum-tabs">
+        <button class="lum-tab active" onclick="lumShowTab('patch',this)">🔆 Patch DMX</button>
+        <button class="lum-tab" onclick="lumShowTab('visu',this)">📊 Visualisation</button>
+        <button class="lum-tab" onclick="lumShowTab('scenes',this)">🎨 Scènes lumière</button>
+        <button class="lum-tab" onclick="lumShowTab('library',this)">📚 Bibliothèque</button>
+        <button class="lum-tab" onclick="lumShowTab('chamsys',this)">🎛 ChamSys</button>
+        <button class="lum-tab" onclick="lumShowTab('dashboard',this)">📈 Dashboard</button>
+      </div>
+
+      <!-- PATCH DMX -->
+      <div class="lum-panel active" id="lum-tab-patch">
+        <div class="toolbar" style="margin-top:1rem">
           <button class="btn primary" onclick="lumNewFixture()">＋ Ajouter appareil</button>
+          <button class="btn" onclick="lumImportGDTF()">⬆ Import GDTF</button>
+          <button class="btn" onclick="lumImportQLC()">⬆ Import QLC+</button>
           <button class="btn blue" onclick="lumNewRig()">＋ Nouveau rig</button>
-          <select id="lum-rig-select" onchange="lumSelectRig(this.value)" style="max-width:200px">
-            <option value="">— Sélectionner un rig —</option>
+          <select id="lum-rig-select" onchange="lumSelectRig(this.value)" style="max-width:180px">
+            <option value="">— Tous les rigs —</option>
           </select>
-          <button class="btn" onclick="lumExportPDF()">⬇ Export PDF patch</button>
-          <button class="btn warn" onclick="lumExportChamSys()">🎛 Export ChamSys</button>
+          <button class="btn sm" onclick="lumAutoAddress()">⚡ Auto-adressage</button>
+          <button class="btn sm" onclick="lumCheckConflicts()">⚠ Conflits</button>
+          <button class="btn" onclick="lumExportPDF()">⬇ PDF</button>
+          <button class="btn warn" onclick="lumExportChamSys()">🎛 ChamSys</button>
         </div>
         <div class="stats-row" id="lum-stats"></div>
-        <!-- Patch DMX -->
-        <div style="background:var(--surface);border-radius:var(--radius-lg);box-shadow:var(--shadow);margin-bottom:1rem;overflow:hidden">
-          <div style="padding:10px 14px;background:var(--bg);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
-            <span style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text2)">🔆 Patch DMX</span>
-            <div style="display:flex;gap:6px">
-              <button class="btn sm" onclick="lumAutoAddress()">⚡ Auto-adressage</button>
-              <button class="btn sm" onclick="lumCheckConflicts()">⚠ Vérifier conflits</button>
-            </div>
-          </div>
-          <div id="lum-patch-grid" style="padding:1rem"></div>
+        <div id="lum-patch-grid"></div>
+      </div>
+
+      <!-- VISUALISATION DMX -->
+      <div class="lum-panel" id="lum-tab-visu">
+        <div class="toolbar" style="margin-top:1rem">
+          <select id="lum-visu-univers" onchange="lumRenderVisu()" style="max-width:160px">
+            <option value="1">Univers 1</option>
+          </select>
+          <span style="font-size:12px;color:var(--text2)" id="lum-visu-info"></span>
         </div>
-        <!-- Bibliothèque fixtures -->
-        <div style="background:var(--surface);border-radius:var(--radius-lg);box-shadow:var(--shadow);overflow:hidden">
-          <div style="padding:10px 14px;background:var(--bg);border-bottom:1px solid var(--border)">
-            <span style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text2)">📚 Bibliothèque de fixtures</span>
-          </div>
-          <div id="lum-library" style="padding:1rem"></div>
+        <div id="lum-visu-container"></div>
+        <div style="display:flex;gap:16px;margin-top:12px;flex-wrap:wrap;font-size:12px">
+          <div style="display:flex;align-items:center;gap:6px"><div style="width:16px;height:16px;background:var(--green);border-radius:3px"></div>Canal occupé</div>
+          <div style="display:flex;align-items:center;gap:6px"><div style="width:16px;height:16px;background:var(--red);border-radius:3px"></div>Conflit</div>
+          <div style="display:flex;align-items:center;gap:6px"><div style="width:16px;height:16px;background:var(--bg);border:1px solid var(--border);border-radius:3px"></div>Libre</div>
         </div>
+      </div>
+
+      <!-- SCÈNES LUMIÈRE -->
+      <div class="lum-panel" id="lum-tab-scenes">
+        <div class="toolbar" style="margin-top:1rem">
+          <button class="btn primary" onclick="lumNewScene()">＋ Nouvelle scène</button>
+          <button class="btn" onclick="lumExportScenesPDF()">⬇ Export PDF</button>
+        </div>
+        <div id="lum-scenes-grid"></div>
+      </div>
+
+      <!-- BIBLIOTHÈQUE -->
+      <div class="lum-panel" id="lum-tab-library">
+        <div class="toolbar" style="margin-top:1rem">
+          <input type="text" id="lum-lib-search" placeholder="Rechercher…" oninput="lumRenderLibrary()" style="max-width:220px">
+          <select id="lum-lib-filter" onchange="lumRenderLibrary()" style="max-width:160px">
+            <option value="">Tous types</option>
+            <option value="par">PAR LED</option>
+            <option value="lyre">Lyre</option>
+            <option value="strobe">Stroboscope</option>
+            <option value="fog">Fog/Haze</option>
+            <option value="led">LED Bar</option>
+            <option value="autre">Autre</option>
+          </select>
+          <button class="btn" onclick="lumImportGDTF()">⬆ Import GDTF</button>
+          <button class="btn" onclick="lumImportQLC()">⬆ Import QLC+</button>
+        </div>
+        <div id="lum-library"></div>
+      </div>
+
+      <!-- CHAMSYS -->
+      <div class="lum-panel" id="lum-tab-chamsys">
+        <div style="padding:1rem 0" id="lum-chamsys-content"></div>
+      </div>
+
+      <!-- DASHBOARD -->
+      <div class="lum-panel" id="lum-tab-dashboard">
+        <div style="padding:1rem 0" id="lum-dashboard-content"></div>
       </div>
     </div>
 
@@ -578,7 +655,7 @@ function defaultState(){
     profiles:[{id:1,name:'Admin',color:'#1D9E75',bg:'#E1F5EE',role:'Administrateur'},{id:2,name:'Tech 1',color:'#185FA5',bg:'#E6F1FB',role:'Technicien'}],
     nextPId:3,materiel:[],nextMId:1,evenements:[],nextEId:1,
     checklist:{},sortie_stock:{},incidents:[],nextIId:1,mouvements:[],nextMvId:1,
-    activeEvent:null,fiches:[],nextFId:1,scenes:{},patches:{},devis:[],fixtures:[],rigs:[]
+    activeEvent:null,fiches:[],nextFId:1,scenes:{},patches:{},devis:[],fixtures:[],rigs:[],lumScenes:[]
   };
 }
 
@@ -2112,10 +2189,567 @@ function lumDefaultRig(){
 function renderLumiere(){
   if(!S.fixtures)S.fixtures=[];
   if(!S.rigs)S.rigs=[];
+  if(!S.lumScenes)S.lumScenes=[];
   lumUpdateRigSelect();
   lumRenderStats();
   lumRenderPatch();
   lumRenderLibrary();
+  lumRenderVisu();
+  lumRenderScenes();
+  lumRenderChamSys();
+  lumRenderDashboard();
+}
+
+function lumShowTab(tab, btn){
+  document.querySelectorAll('.lum-tab').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.lum-panel').forEach(p=>p.classList.remove('active'));
+  if(btn)btn.classList.add('active');
+  const panel=document.getElementById('lum-tab-'+tab);
+  if(panel)panel.classList.add('active');
+  if(tab==='visu')lumRenderVisu();
+  if(tab==='scenes')lumRenderScenes();
+  if(tab==='chamsys')lumRenderChamSys();
+  if(tab==='dashboard')lumRenderDashboard();
+}
+
+// ── Visualisation DMX ──
+function lumRenderVisu(univers){
+  const u=univers||parseInt(document.getElementById('lum-visu-univers')?.value)||1;
+  const fixtures=(S.fixtures||[]).filter(f=>(f.univers||1)===u);
+  const conflicts=lumFindConflicts();
+  const conflictIds=new Set(conflicts.flatMap(c=>[c.a,c.b]));
+  // Mise à jour select univers
+  const allU=[...new Set((S.fixtures||[]).map(f=>f.univers||1))].sort((a,b)=>a-b);
+  const sel=document.getElementById('lum-visu-univers');
+  if(sel){sel.innerHTML=allU.map(u2=>`<option value="${u2}" ${u2===u?'selected':''}>Univers ${u2}</option>`).join('');}
+  // Carte des 512 canaux
+  const chMap=new Array(513).fill(null); // null = libre
+  fixtures.forEach(f=>{
+    for(let i=0;i<(f.canaux||1)*(f.quantite||1);i++){
+      const addr=f.adresse+i;
+      if(addr<=512){
+        const chName=f.canauxDef&&f.canauxDef[i%f.canaux]?f.canauxDef[i%f.canaux]:`CH${i%f.canaux+1}`;
+        chMap[addr]={
+          fixture:f,
+          chName,
+          isConflict:conflictIds.has(f.id),
+          localCh:i%f.canaux+1,
+          unit:Math.floor(i/f.canaux)+1,
+        };
+      }
+    }
+  });
+  const used=chMap.filter(Boolean).length;
+  const free=512-used;
+  const infoEl=document.getElementById('lum-visu-info');
+  if(infoEl)infoEl.textContent=`${used} canaux utilisés · ${free} libres`;
+  // Rendu grille
+  let html='<div style="background:var(--surface);border-radius:var(--radius-lg);box-shadow:var(--shadow);padding:1rem">';
+  // Lignes de 32 canaux
+  for(let row=0;row<16;row++){
+    const start=row*32+1;
+    html+=`<div style="display:flex;gap:1px;margin-bottom:1px;align-items:center">`;
+    html+=`<div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;min-width:28px;text-align:right;margin-right:4px">${start}</div>`;
+    for(let col=0;col<32;col++){
+      const addr=start+col;if(addr>512)break;
+      const ch=chMap[addr];
+      const bg=ch?(ch.isConflict?'var(--red)':ch.fixture.couleur||'var(--green)'):'var(--bg)';
+      const border=ch?(ch.isConflict?'var(--red)':'transparent'):'var(--border)';
+      const tooltip=ch?`${addr}: ${ch.fixture.nom} · ${ch.chName}${ch.fixture.quantite>1?' (u'+ch.unit+')':''}`:addr.toString();
+      html+=`<div class="dmx-cell ${ch?ch.isConflict?'conflict':'used':''}" 
+        style="background:${bg};border-color:${border};flex:1"
+        title="${tooltip}">
+        <div class="dmx-tooltip">${tooltip}</div>
+      </div>`;
+    }
+    html+=`</div>`;
+  }
+  html+='</div>';
+  // Légende fixtures
+  if(fixtures.length){
+    html+=`<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px">`;
+    fixtures.forEach(f=>{
+      html+=`<div style="display:flex;align-items:center;gap:6px;padding:4px 10px;background:var(--surface);border-radius:20px;box-shadow:var(--shadow);font-size:12px">
+        <div style="width:12px;height:12px;border-radius:3px;background:${f.couleur||'var(--green)'}"></div>
+        <span style="font-weight:500">${esc(f.nom)}</span>
+        <span style="color:var(--text3)">${f.adresse}–${f.adresse+(f.canaux||1)*(f.quantite||1)-1}</span>
+      </div>`;
+    });
+    html+=`</div>`;
+  }
+  const container=document.getElementById('lum-visu-container');
+  if(container)container.innerHTML=html;
+}
+
+// ── Scènes lumière ──
+const LUM_PALETTES=[
+  {nom:'Rouge vif',rgb:[255,0,0]},{nom:'Orange',rgb:[255,128,0]},{nom:'Jaune',rgb:[255,220,0]},
+  {nom:'Vert',rgb:[0,255,0]},{nom:'Cyan',rgb:[0,255,255]},{nom:'Bleu',rgb:[0,0,255]},
+  {nom:'Violet',rgb:[128,0,255]},{nom:'Rose',rgb:[255,0,128]},{nom:'Blanc chaud',rgb:[255,200,120]},
+  {nom:'Blanc froid',rgb:[200,220,255]},{nom:'Blanc pur',rgb:[255,255,255]},{nom:'Amber',rgb:[255,160,0]},
+  {nom:'Magenta',rgb:[255,0,255]},{nom:'Lime',rgb:[128,255,0]},{nom:'Lavande',rgb:[180,100,255]},
+  {nom:'Turquoise',rgb:[0,200,180]},{nom:'Corail',rgb:[255,100,80]},{nom:'Or',rgb:[255,200,50]},
+];
+
+function lumDefaultScene(){
+  return{
+    id:Date.now(),
+    nom:'Scène '+((S.lumScenes||[]).length+1),
+    description:'',
+    couleur:[255,128,0],
+    fixtures:[],
+    params:{
+      couleur:true,r:255,g:128,b:0,
+      dimmer:true,dimmerVal:100,
+      pan:false,panVal:127,
+      tilt:false,tiltVal:127,
+      gobo:false,goboVal:0,
+      stroboscope:false,strobeVal:0,
+      zoom:false,zoomVal:127,
+    },
+    noteChamSys:'',
+    tag:'',
+  };
+}
+
+function lumNewScene(){lumOpenSceneEditor(null);}
+
+function lumRenderScenes(){
+  const scenes=S.lumScenes||[];
+  const grid=document.getElementById('lum-scenes-grid');if(!grid)return;
+  if(!scenes.length){
+    grid.innerHTML=`<div class="empty"><p>Aucune scène. Créez votre premier preset de couleurs et positions.</p></div>`;return;
+  }
+  grid.innerHTML=scenes.map(sc=>{
+    const [r,g,b]=sc.params?.couleur?[sc.params.r||0,sc.params.g||0,sc.params.b||0]:[200,200,200];
+    const luma=0.299*r+0.587*g+0.114*b;
+    const textCol=luma>140?'#1a1a18':'#fff';
+    return`<div class="lum-scene-card" style="border-left:4px solid rgb(${r},${g},${b})">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+        <div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+            <div style="width:24px;height:24px;border-radius:50%;background:rgb(${r},${g},${b})"></div>
+            <span style="font-size:15px;font-weight:600">${esc(sc.nom)}</span>
+            ${sc.tag?`<span class="badge" style="background:var(--purple-light);color:var(--purple);font-size:10px">${esc(sc.tag)}</span>`:''}
+          </div>
+          ${sc.description?`<div style="font-size:12px;color:var(--text2)">${esc(sc.description)}</div>`:''}
+        </div>
+        <div class="td-actions">
+          <button class="btn sm" onclick="lumOpenSceneEditor(${sc.id})">✏️</button>
+          <button class="btn sm danger" onclick="lumDelScene(${sc.id})">🗑</button>
+        </div>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">
+        ${sc.params?.couleur?`<span class="badge" style="background:rgb(${r},${g},${b});color:${textCol}">RGB ${r},${g},${b}</span>`:''}
+        ${sc.params?.dimmer?`<span class="badge" style="background:var(--amber-light);color:var(--amber-dark)">Dim ${sc.params.dimmerVal}%</span>`:''}
+        ${sc.params?.pan?`<span class="badge" style="background:var(--blue-light);color:var(--blue)">Pan ${sc.params.panVal}</span>`:''}
+        ${sc.params?.tilt?`<span class="badge" style="background:var(--blue-light);color:var(--blue)">Tilt ${sc.params.tiltVal}</span>`:''}
+        ${sc.params?.stroboscope?`<span class="badge" style="background:var(--red-light);color:var(--red)">Strobe ${sc.params.strobeVal}</span>`:''}
+        ${sc.params?.gobo?`<span class="badge" style="background:var(--gray-light);color:var(--gray-dark)">Gobo ${sc.params.goboVal}</span>`:''}
+        ${sc.params?.zoom?`<span class="badge" style="background:var(--green-light);color:var(--green-dark)">Zoom ${sc.params.zoomVal}</span>`:''}
+      </div>
+      ${sc.noteChamSys?`<div style="margin-top:8px;font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;background:var(--bg);padding:4px 8px;border-radius:5px">🎛 ${esc(sc.noteChamSys)}</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+function lumOpenSceneEditor(id){
+  const isNew=!id;
+  const sc=id?S.lumScenes.find(s=>s.id===id):lumDefaultScene();
+  if(!sc)return;
+  const p=sc.params||{};
+  const palHtml=LUM_PALETTES.map((pal,i)=>`
+    <div class="palette-chip" title="${pal.nom}"
+      style="background:rgb(${pal.rgb[0]},${pal.rgb[1]},${pal.rgb[2]})"
+      onclick="document.getElementById('sc-r').value=${pal.rgb[0]};document.getElementById('sc-g').value=${pal.rgb[1]};document.getElementById('sc-b').value=${pal.rgb[2]};lumUpdateScenePreview()">
+    </div>`).join('');
+  const root=document.getElementById('modal-root');
+  root.innerHTML=`<div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+    <div class="modal" style="max-width:540px">
+      <div class="modal-head"><h3>${isNew?'Nouvelle scène lumière':'Modifier scène'}</h3></div>
+      <div class="modal-body">
+        <div class="field-row">
+          <div class="field"><label>Nom</label><input id="sc-nom" type="text" value="${esc(sc.nom)}"></div>
+          <div class="field"><label>Tag / Catégorie</label><input id="sc-tag" type="text" value="${esc(sc.tag||'')}" placeholder="Live, Ambiance…"></div>
+        </div>
+        <div class="field"><label>Description</label><input id="sc-desc" type="text" value="${esc(sc.description||'')}" placeholder="Description courte…"></div>
+        <div style="margin-bottom:12px">
+          <label style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:var(--text2);display:block;margin-bottom:8px">Palette de couleurs rapide</label>
+          <div style="display:flex;flex-wrap:wrap;gap:6px">${palHtml}</div>
+        </div>
+        <div style="background:var(--bg);border-radius:var(--radius);padding:12px;margin-bottom:12px">
+          <label style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:var(--text2);display:block;margin-bottom:10px">Paramètres</label>
+          <div class="lum-param-row">
+            <input type="checkbox" id="sc-use-col" ${p.couleur?'checked':''} onchange="lumUpdateScenePreview()" style="accent-color:var(--green)">
+            <span class="lum-param-label">Couleur RGB</span>
+            <input type="number" id="sc-r" min="0" max="255" value="${p.r||255}" oninput="lumUpdateScenePreview()" style="width:60px;font-family:'DM Mono',monospace;padding:4px 8px;border:1px solid var(--border);border-radius:6px">
+            <input type="number" id="sc-g" min="0" max="255" value="${p.g||128}" oninput="lumUpdateScenePreview()" style="width:60px;font-family:'DM Mono',monospace;padding:4px 8px;border:1px solid var(--border);border-radius:6px">
+            <input type="number" id="sc-b" min="0" max="255" value="${p.b||0}" oninput="lumUpdateScenePreview()" style="width:60px;font-family:'DM Mono',monospace;padding:4px 8px;border:1px solid var(--border);border-radius:6px">
+            <div id="sc-col-preview" style="width:32px;height:32px;border-radius:6px;border:1px solid var(--border);background:rgb(${p.r||255},${p.g||128},${p.b||0})"></div>
+          </div>
+          <div class="lum-param-row">
+            <input type="checkbox" id="sc-use-dim" ${p.dimmer?'checked':''} style="accent-color:var(--green)">
+            <span class="lum-param-label">Dimmer</span>
+            <input type="range" id="sc-dim" min="0" max="100" value="${p.dimmerVal||100}" oninput="document.getElementById('sc-dim-val').textContent=this.value+'%'" style="flex:1">
+            <span id="sc-dim-val" style="font-family:'DM Mono',monospace;font-size:12px;min-width:36px">${p.dimmerVal||100}%</span>
+          </div>
+          <div class="lum-param-row">
+            <input type="checkbox" id="sc-use-pan" ${p.pan?'checked':''} style="accent-color:var(--green)">
+            <span class="lum-param-label">Pan</span>
+            <input type="range" id="sc-pan" min="0" max="255" value="${p.panVal||127}" oninput="document.getElementById('sc-pan-val').textContent=this.value" style="flex:1">
+            <span id="sc-pan-val" style="font-family:'DM Mono',monospace;font-size:12px;min-width:36px">${p.panVal||127}</span>
+          </div>
+          <div class="lum-param-row">
+            <input type="checkbox" id="sc-use-tilt" ${p.tilt?'checked':''} style="accent-color:var(--green)">
+            <span class="lum-param-label">Tilt</span>
+            <input type="range" id="sc-tilt" min="0" max="255" value="${p.tiltVal||127}" oninput="document.getElementById('sc-tilt-val').textContent=this.value" style="flex:1">
+            <span id="sc-tilt-val" style="font-family:'DM Mono',monospace;font-size:12px;min-width:36px">${p.tiltVal||127}</span>
+          </div>
+          <div class="lum-param-row">
+            <input type="checkbox" id="sc-use-strobe" ${p.stroboscope?'checked':''} style="accent-color:var(--green)">
+            <span class="lum-param-label">Strobe</span>
+            <input type="range" id="sc-strobe" min="0" max="255" value="${p.strobeVal||0}" oninput="document.getElementById('sc-strobe-val').textContent=this.value" style="flex:1">
+            <span id="sc-strobe-val" style="font-family:'DM Mono',monospace;font-size:12px;min-width:36px">${p.strobeVal||0}</span>
+          </div>
+          <div class="lum-param-row">
+            <input type="checkbox" id="sc-use-gobo" ${p.gobo?'checked':''} style="accent-color:var(--green)">
+            <span class="lum-param-label">Gobo</span>
+            <input type="range" id="sc-gobo" min="0" max="255" value="${p.goboVal||0}" oninput="document.getElementById('sc-gobo-val').textContent=this.value" style="flex:1">
+            <span id="sc-gobo-val" style="font-family:'DM Mono',monospace;font-size:12px;min-width:36px">${p.goboVal||0}</span>
+          </div>
+          <div class="lum-param-row">
+            <input type="checkbox" id="sc-use-zoom" ${p.zoom?'checked':''} style="accent-color:var(--green)">
+            <span class="lum-param-label">Zoom</span>
+            <input type="range" id="sc-zoom" min="0" max="255" value="${p.zoomVal||127}" oninput="document.getElementById('sc-zoom-val').textContent=this.value" style="flex:1">
+            <span id="sc-zoom-val" style="font-family:'DM Mono',monospace;font-size:12px;min-width:36px">${p.zoomVal||127}</span>
+          </div>
+        </div>
+        <div class="field"><label>Note ChamSys (numéro de preset, groupe…)</label>
+          <input id="sc-chamsys" type="text" value="${esc(sc.noteChamSys||'')}" placeholder="ex: Preset 1, Group 5 > Col > Apply"></div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn" onclick="closeModal()">Annuler</button>
+        <button class="btn primary" onclick="lumSaveScene(${isNew?'null':sc.id})">Enregistrer</button>
+      </div>
+    </div></div>`;
+}
+
+function lumUpdateScenePreview(){
+  const r=document.getElementById('sc-r')?.value||0;
+  const g=document.getElementById('sc-g')?.value||0;
+  const b=document.getElementById('sc-b')?.value||0;
+  const prev=document.getElementById('sc-col-preview');
+  if(prev)prev.style.background=`rgb(${r},${g},${b})`;
+}
+
+function lumSaveScene(existingId){
+  const data={
+    nom:(document.getElementById('sc-nom')?.value||'Scène').trim(),
+    tag:(document.getElementById('sc-tag')?.value||'').trim(),
+    description:(document.getElementById('sc-desc')?.value||'').trim(),
+    noteChamSys:(document.getElementById('sc-chamsys')?.value||'').trim(),
+    params:{
+      couleur:document.getElementById('sc-use-col')?.checked||false,
+      r:parseInt(document.getElementById('sc-r')?.value)||0,
+      g:parseInt(document.getElementById('sc-g')?.value)||0,
+      b:parseInt(document.getElementById('sc-b')?.value)||0,
+      dimmer:document.getElementById('sc-use-dim')?.checked||false,
+      dimmerVal:parseInt(document.getElementById('sc-dim')?.value)||100,
+      pan:document.getElementById('sc-use-pan')?.checked||false,
+      panVal:parseInt(document.getElementById('sc-pan')?.value)||127,
+      tilt:document.getElementById('sc-use-tilt')?.checked||false,
+      tiltVal:parseInt(document.getElementById('sc-tilt')?.value)||127,
+      stroboscope:document.getElementById('sc-use-strobe')?.checked||false,
+      strobeVal:parseInt(document.getElementById('sc-strobe')?.value)||0,
+      gobo:document.getElementById('sc-use-gobo')?.checked||false,
+      goboVal:parseInt(document.getElementById('sc-gobo')?.value)||0,
+      zoom:document.getElementById('sc-use-zoom')?.checked||false,
+      zoomVal:parseInt(document.getElementById('sc-zoom')?.value)||127,
+    }
+  };
+  if(!S.lumScenes)S.lumScenes=[];
+  if(existingId&&existingId!=='null'){
+    const idx=S.lumScenes.findIndex(s=>s.id===existingId);
+    if(idx>=0)Object.assign(S.lumScenes[idx],data);
+  }else{
+    S.lumScenes.push({id:Date.now(),...data});
+  }
+  save();closeModal();lumRenderScenes();showToast('✅ Scène lumière sauvegardée');
+}
+
+function lumDelScene(id){
+  if(!confirm('Supprimer cette scène ?'))return;
+  S.lumScenes=S.lumScenes.filter(s=>s.id!==id);save();lumRenderScenes();
+}
+
+function lumExportScenesPDF(){
+  loadJsPDF(()=>{
+    const{jsPDF}=window.jspdf,doc=new jsPDF({unit:'mm',format:'a4'});
+    const scenes=S.lumScenes||[];
+    const W=210,mg=15;let y=mg;
+    doc.setFillColor(29,158,117);doc.rect(0,0,W,26,'F');
+    doc.setTextColor(255,255,255);doc.setFontSize(16);doc.setFont('helvetica','bold');
+    doc.text('FICHES SCENES LUMIERE',mg,14);
+    doc.setFontSize(9);doc.setFont('helvetica','normal');
+    doc.text(`${scenes.length} scènes · ${today()}`,mg,22);
+    y=34;
+    scenes.forEach((sc,i)=>{
+      if(y>250){doc.addPage();y=mg;}
+      const p=sc.params||{};
+      const [r,g,b]=p.couleur?[p.r||0,p.g||0,p.b||0]:[200,200,200];
+      doc.setFillColor(r,g,b);doc.roundedRect(mg,y,8,8,2,2,'F');
+      doc.setTextColor(30,30,28);doc.setFont('helvetica','bold');doc.setFontSize(11);
+      doc.text(sc.nom,mg+12,y+6);
+      if(sc.tag){doc.setFontSize(8);doc.setTextColor(100,100,95);doc.text(`[${sc.tag}]`,W-mg,y+6,{align:'right'});}
+      y+=12;
+      doc.setFont('helvetica','normal');doc.setTextColor(80,80,75);doc.setFontSize(8);
+      if(sc.description)doc.text(sc.description,mg,y);
+      const params=[];
+      if(p.couleur)params.push(`RGB: ${p.r},${p.g},${p.b}`);
+      if(p.dimmer)params.push(`Dimmer: ${p.dimmerVal}%`);
+      if(p.pan)params.push(`Pan: ${p.panVal}`);
+      if(p.tilt)params.push(`Tilt: ${p.tiltVal}`);
+      if(p.stroboscope)params.push(`Strobe: ${p.strobeVal}`);
+      if(p.gobo)params.push(`Gobo: ${p.goboVal}`);
+      if(p.zoom)params.push(`Zoom: ${p.zoomVal}`);
+      doc.setTextColor(30,30,28);
+      doc.text(params.join('  ·  '),mg,y+(sc.description?8:0));
+      y+=(sc.description?8:0)+6;
+      if(sc.noteChamSys){doc.setTextColor(24,95,165);doc.text(`ChamSys: ${sc.noteChamSys}`,mg,y);y+=6;}
+      doc.setDrawColor(220,220,215);doc.line(mg,y,W-mg,y);y+=6;
+    });
+    doc.save(`scenes_lumiere_${today().replace(/\//g,'-')}.pdf`);
+    showToast('✅ PDF scènes lumière généré');
+  });
+}
+
+// ── Import GDTF ──
+function lumImportGDTF(){
+  const input=document.createElement('input');
+  input.type='file';input.accept='.gdtf,.zip';
+  input.onchange=async e=>{
+    const file=e.target.files[0];if(!file)return;
+    showToast('📂 Lecture du fichier GDTF…');
+    try{
+      // GDTF est un ZIP contenant description.xml
+      const JSZip=await loadJSZip();
+      const zip=await JSZip.loadAsync(file);
+      const xmlFile=zip.file('description.xml');
+      if(!xmlFile){showToast('❌ Fichier GDTF invalide (description.xml manquant)');return;}
+      const xmlStr=await xmlFile.async('string');
+      const parser=new DOMParser();
+      const xml=parser.parseFromString(xmlStr,'text/xml');
+      const fixture=xml.querySelector('Fixture');
+      if(!fixture){showToast('❌ Impossible de lire la fixture GDTF');return;}
+      const nom=fixture.getAttribute('Name')||file.name.replace('.gdtf','');
+      const marque=fixture.getAttribute('Manufacturer')||'';
+      const modes=[...xml.querySelectorAll('DMXMode')].map(m=>({
+        nom:m.getAttribute('Name')||'Default',
+        canaux:[...m.querySelectorAll('DMXChannel')].map(ch=>ch.getAttribute('Attribute')||'CH'),
+      }));
+      const mode=modes[0]||{nom:'Default',canaux:[]};
+      const f={...lumDefaultFixture(),nom,marque,mode:mode.nom,canaux:mode.canaux.length||4,canauxDef:mode.canaux,adresse:lumNextFreeAddress(1)};
+      if(!S.fixtures)S.fixtures=[];
+      S.fixtures.push(f);
+      save();renderLumiere();
+      showToast(`✅ GDTF importé : ${nom} (${mode.canaux.length} canaux)`);
+    }catch(err){
+      showToast('❌ Erreur lecture GDTF : '+err.message);
+      console.error(err);
+    }
+  };
+  input.click();
+}
+
+// ── Import QLC+ ──
+function lumImportQLC(){
+  const input=document.createElement('input');
+  input.type='file';input.accept='.qxf,.xml';
+  input.onchange=async e=>{
+    const file=e.target.files[0];if(!file)return;
+    showToast('📂 Lecture du fichier QLC+…');
+    const reader=new FileReader();
+    reader.onload=ev=>{
+      try{
+        const parser=new DOMParser();
+        const xml=parser.parseFromString(ev.target.result,'text/xml');
+        const nom=xml.querySelector('FixtureDefinition > Model')?.textContent||file.name.replace('.qxf','');
+        const marque=xml.querySelector('FixtureDefinition > Manufacturer')?.textContent||'';
+        const modes=[...xml.querySelectorAll('Mode')].map(m=>({
+          nom:m.getAttribute('Name')||'Default',
+          canaux:[...m.querySelectorAll('Channel')].map((ch,i)=>{
+            const ref=ch.getAttribute('Number');
+            const chanDef=xml.querySelector(`Channel[Name="${ref}"]`)||xml.querySelectorAll('Channel')[i];
+            return chanDef?.getAttribute('Name')||`CH${i+1}`;
+          }),
+        }));
+        const mode=modes[0]||{nom:'Default',canaux:[]};
+        const typeMap={'Colour':'par','Moving Head':'lyre','Strobe':'strobe','Hazer':'fog','LED Bar':'led'};
+        const typeEl=xml.querySelector('FixtureDefinition > Type');
+        const type=typeMap[typeEl?.textContent]||'autre';
+        const f={...lumDefaultFixture(),nom,marque,type,mode:mode.nom,canaux:mode.canaux.length||4,canauxDef:mode.canaux,adresse:lumNextFreeAddress(1)};
+        if(!S.fixtures)S.fixtures=[];
+        S.fixtures.push(f);
+        save();renderLumiere();
+        showToast(`✅ QLC+ importé : ${nom} (${mode.canaux.length} canaux)`);
+      }catch(err){showToast('❌ Erreur lecture QLC+ : '+err.message);console.error(err);}
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
+
+async function loadJSZip(){
+  if(window.JSZip)return window.JSZip;
+  return new Promise((resolve,reject)=>{
+    const s=document.createElement('script');
+    s.src='https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+    s.onload=()=>resolve(window.JSZip);
+    s.onerror=reject;
+    document.body.appendChild(s);
+  });
+}
+
+// ── Guide ChamSys ──
+function lumRenderChamSys(){
+  const el=document.getElementById('lum-chamsys-content');if(!el)return;
+  const fixtures=S.fixtures||[];
+  el.innerHTML=`
+    <div class="chamsys-section">
+      <div class="chamsys-section-title">📋 Import du patch dans MagicQ</div>
+      <div class="chamsys-tip">Pour importer votre patch généré par SonoManager dans ChamSys MagicQ :</div>
+      <div class="chamsys-cmd" onclick="showToast('Commande copiée !')">Setup → Patch → Import Patch → sélectionnez le fichier CSV exporté</div>
+      <div class="chamsys-tip" style="margin-top:8px">Ou manuellement : Setup → Patch → Add Fixture → saisissez les adresses ci-dessous</div>
+    </div>
+
+    <div class="chamsys-section">
+      <div class="chamsys-section-title">🎛 Résumé du patch pour MagicQ</div>
+      ${fixtures.length?`<div style="font-family:'DM Mono',monospace;font-size:12px;background:#1a1a18;color:#7EE787;padding:1rem;border-radius:var(--radius);overflow-x:auto">
+        ${fixtures.map((f,i)=>`<div style="margin-bottom:4px"><span style="color:#888">${String(i+1).padStart(3,'0')}</span> U<span style="color:#FF9900">${f.univers||1}</span> ADDR <span style="color:#58A6FF">${String(f.adresse).padStart(3,'0')}</span> CH <span style="color:#FF9900">${String(f.canaux||1).padStart(2,'0')}</span> <span style="color:#fff">${esc(f.nom)}</span> <span style="color:#888">${f.marque||''}</span></div>`).join('')}
+      </div>`:`<div class="empty" style="padding:1rem"><p>Aucun appareil dans le patch.</p></div>`}
+    </div>
+
+    <div class="chamsys-section">
+      <div class="chamsys-section-title">💡 Commandes MagicQ utiles</div>
+      ${[
+        ['Appliquer une couleur à un groupe','Group X > Col > Apply'],
+        ['Enregistrer un preset couleur','Record > Preset X'],
+        ['Créer une cue de scène','Record > Cue X'],
+        ['Activer un effet sur un groupe','Group X > FX > Add FX > Colour'],
+        ['Blackout','Backspace (ou bouton BIG)'],
+        ['Flash un circuit','Set level puis Release'],
+        ['Charger une scène','Playback X > GO'],
+        ['Patch rapide','Setup > Patch > Patch It > saisir fixture et adresse'],
+        ['Test DMX','Setup > Patch > Test'],
+        ['Sauvegarder le show','Setup > Save Show'],
+      ].map(([desc,cmd])=>`
+        <div style="margin-bottom:8px">
+          <div style="font-size:12px;color:var(--text2);margin-bottom:3px">${desc}</div>
+          <div class="chamsys-cmd" onclick="navigator.clipboard?.writeText('${cmd}');showToast('Commande copiée !')">${cmd}</div>
+        </div>`).join('')}
+    </div>
+
+    <div class="chamsys-section">
+      <div class="chamsys-section-title">🎨 Palettes de couleurs MagicQ</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px">
+        ${LUM_PALETTES.map(p=>`
+          <div style="display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer"
+            onclick="navigator.clipboard?.writeText('R${p.rgb[0]} G${p.rgb[1]} B${p.rgb[2]}');showToast('Valeur RGB copiée !')">
+            <div style="width:36px;height:36px;border-radius:8px;background:rgb(${p.rgb[0]},${p.rgb[1]},${p.rgb[2]});box-shadow:0 2px 6px rgba(0,0,0,0.2)"></div>
+            <div style="font-size:10px;color:var(--text2);text-align:center">${p.nom}</div>
+            <div style="font-size:9px;font-family:'DM Mono',monospace;color:var(--text3)">${p.rgb.join(',')}</div>
+          </div>`).join('')}
+      </div>
+    </div>
+
+    <div class="chamsys-section">
+      <div class="chamsys-section-title">📡 Configuration Art-Net dans MagicQ</div>
+      <div class="chamsys-tip">Pour utiliser une interface Art-Net tierce avec MagicQ :</div>
+      ${[
+        'Setup → Network → saisir l\'IP de votre interface Art-Net',
+        'Setup → DMX I/O → Output Type = Art-Net',
+        'Assigner l\'univers Art-Net à l\'univers MagicQ',
+        'Enable → Output : activer la sortie',
+        'Tester avec Setup → Patch → Test → observer sur la console',
+      ].map((step,i)=>`<div class="chamsys-cmd">${i+1}. ${step}</div>`).join('')}
+    </div>
+  `;
+}
+
+// ── Dashboard éclairage ──
+function lumRenderDashboard(){
+  const el=document.getElementById('lum-dashboard-content');if(!el)return;
+  const fixtures=S.fixtures||[];
+  const scenes=S.lumScenes||[];
+  const rigs=S.rigs||[];
+  const conflicts=lumFindConflicts();
+  const allU=[...new Set(fixtures.map(f=>f.univers||1))].sort((a,b)=>a-b);
+  const typeCount={};
+  fixtures.forEach(f=>{typeCount[f.type]=(typeCount[f.type]||0)+(f.quantite||1);});
+  const typeLabels={par:'PAR LED',lyre:'Lyre',strobe:'Stroboscope',fog:'Fog/Haze',led:'LED Bar',autre:'Autre'};
+  const typeColors2={par:'var(--amber)',lyre:'var(--blue)',strobe:'var(--red)',fog:'var(--gray)',led:'var(--green)',autre:'var(--purple)'};
+
+  el.innerHTML=`
+    <div class="stats-row">
+      <div class="stat"><div class="s-label">Fixtures</div><div class="s-val">${fixtures.length}</div></div>
+      <div class="stat"><div class="s-label">Unités totales</div><div class="s-val">${fixtures.reduce((a,f)=>a+(f.quantite||1),0)}</div></div>
+      <div class="stat"><div class="s-label">Univers DMX</div><div class="s-val" style="color:var(--blue)">${allU.length}</div></div>
+      <div class="stat"><div class="s-label">Scènes</div><div class="s-val" style="color:var(--green)">${scenes.length}</div></div>
+      <div class="stat"><div class="s-label">Conflits</div><div class="s-val" style="color:${conflicts.length?'var(--red)':'var(--green)'}">${conflicts.length}</div></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
+      <div class="dashboard-card">
+        <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);margin-bottom:12px">Répartition par type</div>
+        ${Object.entries(typeCount).map(([type,count])=>`
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+            <div style="width:10px;height:10px;border-radius:50%;background:${typeColors2[type]||'var(--gray)'}"></div>
+            <span style="flex:1;font-size:13px">${typeLabels[type]||type}</span>
+            <span style="font-family:'DM Mono',monospace;font-weight:600">${count}</span>
+          </div>`).join('')||'<div class="empty" style="padding:0"><p>Aucun appareil</p></div>'}
+      </div>
+      <div class="dashboard-card">
+        <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);margin-bottom:12px">Utilisation par univers</div>
+        ${allU.map(u=>{
+          const uF=fixtures.filter(f=>(f.univers||1)===u);
+          const used=uF.reduce((a,f)=>a+(f.canaux||1)*(f.quantite||1),0);
+          const pct=Math.min(100,Math.round(used/512*100));
+          return`<div style="margin-bottom:10px">
+            <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px">
+              <span>Univers ${u}</span><span style="font-family:'DM Mono',monospace">${used}/512</span>
+            </div>
+            <div style="height:8px;background:var(--bg);border-radius:4px;overflow:hidden">
+              <div style="height:100%;width:${pct}%;background:${pct>90?'var(--red)':pct>70?'var(--amber)':'var(--green)'};border-radius:4px"></div>
+            </div>
+          </div>`;
+        }).join('')||'<div class="empty" style="padding:0"><p>Aucun univers</p></div>'}
+      </div>
+    </div>
+
+    ${conflicts.length?`<div class="dashboard-card" style="border-left:3px solid var(--red)">
+      <div style="font-size:12px;font-weight:700;color:var(--red);margin-bottom:8px">⚠ ${conflicts.length} conflit(s) d'adresse DMX</div>
+      ${conflicts.map(c=>{
+        const a=fixtures.find(f=>f.id===c.a),b=fixtures.find(f=>f.id===c.b);
+        return`<div style="font-size:12px;color:var(--text2);margin-bottom:4px">
+          ${a?esc(a.nom):'?'} (U${a?.univers||1}·${a?.adresse||0}) ↔ ${b?esc(b.nom):'?'} (U${b?.univers||1}·${b?.adresse||0})
+        </div>`;
+      }).join('')}
+      <button class="btn sm warn" onclick="lumAutoAddress()" style="margin-top:8px">⚡ Corriger automatiquement</button>
+    </div>`:''} 
+
+    <div class="dashboard-card">
+      <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);margin-bottom:12px">Dernières scènes lumière</div>
+      ${scenes.slice(-4).reverse().map(sc=>{
+        const p=sc.params||{};
+        const [r,g,b]=p.couleur?[p.r||0,p.g||0,p.b||0]:[200,200,200];
+        return`<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">
+          <div style="width:20px;height:20px;border-radius:4px;background:rgb(${r},${g},${b});flex-shrink:0"></div>
+          <span style="flex:1;font-size:13px">${esc(sc.nom)}</span>
+          ${sc.tag?`<span style="font-size:10px;color:var(--text3)">${esc(sc.tag)}</span>`:''}
+        </div>`;
+      }).join('')||'<div class="empty" style="padding:0"><p>Aucune scène</p></div>'}
+    </div>
+  `;
 }
 
 function lumUpdateRigSelect(){
