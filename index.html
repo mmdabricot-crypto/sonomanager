@@ -3696,7 +3696,7 @@ function dvExportPDFAndShare(){
     setTimeout(()=>{if(btn){btn.textContent='⬇ Télécharger PDF';btn.style.background='';btn.disabled=false;}},3000);
   },1500);
 }
-function dvExportPDF(){
+function dvExportPDF(autoOpen){
   if(!dvCurrent)return;
   loadJsPDF(()=>{
     const d=dvCurrent,{sousTotal,remiseMontant,total}=dvCalcTotaux(),isF=d.type==='facture';
@@ -3738,9 +3738,9 @@ function dvExportPDF(){
     y+=4;
     const totX=W-mg-80;
     const rows=[];
-    if(remiseMontant>0){rows.push({l:'Sous-total',v:dvFmt(sousTotal)+' €'});rows.push({l:`Remise`,v:'-'+dvFmt(remiseMontant)+' €',red:true});}
+    if(remiseMontant>0){rows.push({l:'Sous-total',v:dvFmt(sousTotal)+' €'});rows.push({l:'Remise',v:'-'+dvFmt(remiseMontant)+' €',red:true});}
     if(d.acompte>0&&isF)rows.push({l:'Acompte reçu',v:'-'+dvFmt(d.acompte)+' €',green:true});
-    rows.push({l:isF&&d.acompte>0?'RESTE À PAYER':'COÛT TOTAL',v:dvFmt(isF&&d.acompte>0?Math.max(0,total-(d.acompte||0)):total)+' €',bold:true});
+    rows.push({l:isF&&d.acompte>0?'RESTE A PAYER':'COUT TOTAL',v:dvFmt(isF&&d.acompte>0?Math.max(0,total-(d.acompte||0)):total)+' €',bold:true});
     rows.forEach(r=>{
       if(y>275){doc.addPage();y=mg;}
       if(r.bold){doc.setFillColor(...hCol);doc.rect(totX,y-2,80,9,'F');doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');}
@@ -3753,8 +3753,24 @@ function dvExportPDF(){
     (d.noteFooter||'').split('\n').forEach(fl=>{doc.text(fl,mg,y);y+=4;});
     doc.setFont('helvetica','bold');doc.setTextColor(...hCol);doc.setFontSize(10);
     doc.text('NOUS VOUS REMERCIONS DE VOTRE CONFIANCE.',W/2,y+6,{align:'center'});
-    const fname=`${isF?'Facture':'Devis'}_${d.num}_${(d.client.nom||'client').replace(/\s+/g,'_')}.pdf`;
-    doc.save(fname);showToast(`✅ ${fname} téléchargé`);
+
+    // Ouvrir dans un nouvel onglet — visible, enregistrable, partageable
+    const blob = doc.output('blob');
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.target = '_blank';
+    a.rel = 'noopener';
+    // Sur mobile : ouvrir directement
+    if(/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)){
+      a.download = `${isF?'Facture':'Devis'}_${d.num}_${(d.client.nom||'client').replace(/\s+/g,'_')}.pdf`;
+      a.click();
+    } else {
+      // Sur desktop : ouvrir dans un nouvel onglet (PDF visible + bouton save du navigateur)
+      window.open(url, '_blank');
+    }
+    setTimeout(()=>URL.revokeObjectURL(url), 60000);
+    showToast('✅ PDF ouvert — utilisez Ctrl+S ou le bouton ⬇ du navigateur pour enregistrer');
   });
 }
 function dvGetResume(){if(!dvCurrent)return'';const{total}=dvCalcTotaux(),d=dvCurrent;return`${d.type==='facture'?'Facture':'Devis'} N° ${d.num} — DABRIKSON\nClient : ${d.client.nom||'—'}\nPrestation : ${d.objet||'—'}\nDate : ${dvFmtDate(d.datePresta)}\nMontant : ${dvFmt(total)} €\n\nVeuillez trouver ci-joint le document en PDF.\n\n📞 0690 312083 | dabrikson@gmail.com`;}
