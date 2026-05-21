@@ -224,6 +224,28 @@ tbody tr:hover td{background:var(--bg)}
   #scene-canvas-wrap{height:60vw;min-height:300px}
   .main{padding:1rem .75rem}
 }
+.lum-fixture{background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);padding:10px 12px;border:1.5px solid transparent;transition:all .15s}
+.lum-fixture:hover{border-color:var(--border)}
+.lum-fixture.conflict{border-color:var(--red);background:var(--red-light)}
+.lum-addr{font-family:'DM Mono',monospace;font-size:11px;font-weight:700;padding:2px 7px;border-radius:4px;display:inline-block;margin-bottom:6px}
+.lum-name{font-size:13px;font-weight:600;margin-bottom:3px}
+.lum-meta{font-size:11px;color:var(--text2);margin-bottom:6px}
+.lum-channels{display:flex;flex-wrap:wrap;gap:3px;margin-top:6px}
+.lum-ch{font-size:10px;padding:1px 5px;border-radius:3px;font-family:'DM Mono',monospace}
+.lum-type-par{background:var(--amber-light);color:var(--amber-dark)}
+.lum-type-lyre{background:var(--blue-light);color:var(--blue)}
+.lum-type-strobe{background:var(--red-light);color:var(--red)}
+.lum-type-fog{background:var(--gray-light);color:var(--gray-dark)}
+.lum-type-led{background:var(--green-light);color:var(--green-dark)}
+.lum-type-autre{background:var(--purple-light);color:var(--purple)}
+.lum-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
+.lum-universe{margin-bottom:1.25rem}
+.lum-universe-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);padding:6px 0;margin-bottom:8px;border-bottom:2px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.dmx-bar{height:6px;background:var(--bg);border-radius:4px;margin-top:4px;overflow:hidden}
+.lib-fixture{display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid rgba(0,0,0,0.05);cursor:pointer;transition:background .1s}
+.lib-fixture:hover{background:var(--bg)}
+.lib-fixture:last-child{border-bottom:none}
+
 </style>
 </head>
 <body>
@@ -256,6 +278,7 @@ tbody tr:hover td{background:var(--bg)}
         <button class="nav-btn" onclick="showPanel('scene')">🎭 Plan de scène</button>
         <button class="nav-btn" onclick="showPanel('patch')">🎛 Patch console</button>
         <button class="nav-btn" onclick="showPanel('devis')">📄 Devis & Factures</button>
+        <button class="nav-btn" onclick="showPanel('lumiere')">🔆 Éclairage</button>
         <button class="nav-btn" onclick="showPanel('maintenance')">🔧 Maintenance</button>
       </nav>
     </div>
@@ -416,6 +439,40 @@ tbody tr:hover td{background:var(--bg)}
       <div id="dv-editor-view" style="display:none"></div>
     </div>
 
+    <!-- ══ ÉCLAIRAGE ══ -->
+    <div class="panel" id="panel-lumiere">
+      <div id="lum-list-view">
+        <div class="toolbar">
+          <button class="btn primary" onclick="lumNewFixture()">＋ Ajouter appareil</button>
+          <button class="btn blue" onclick="lumNewRig()">＋ Nouveau rig</button>
+          <select id="lum-rig-select" onchange="lumSelectRig(this.value)" style="max-width:200px">
+            <option value="">— Sélectionner un rig —</option>
+          </select>
+          <button class="btn" onclick="lumExportPDF()">⬇ Export PDF patch</button>
+          <button class="btn warn" onclick="lumExportChamSys()">🎛 Export ChamSys</button>
+        </div>
+        <div class="stats-row" id="lum-stats"></div>
+        <!-- Patch DMX -->
+        <div style="background:var(--surface);border-radius:var(--radius-lg);box-shadow:var(--shadow);margin-bottom:1rem;overflow:hidden">
+          <div style="padding:10px 14px;background:var(--bg);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+            <span style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text2)">🔆 Patch DMX</span>
+            <div style="display:flex;gap:6px">
+              <button class="btn sm" onclick="lumAutoAddress()">⚡ Auto-adressage</button>
+              <button class="btn sm" onclick="lumCheckConflicts()">⚠ Vérifier conflits</button>
+            </div>
+          </div>
+          <div id="lum-patch-grid" style="padding:1rem"></div>
+        </div>
+        <!-- Bibliothèque fixtures -->
+        <div style="background:var(--surface);border-radius:var(--radius-lg);box-shadow:var(--shadow);overflow:hidden">
+          <div style="padding:10px 14px;background:var(--bg);border-bottom:1px solid var(--border)">
+            <span style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text2)">📚 Bibliothèque de fixtures</span>
+          </div>
+          <div id="lum-library" style="padding:1rem"></div>
+        </div>
+      </div>
+    </div>
+
     <div class="panel" id="panel-maintenance">
       <div class="toolbar">
         <select id="maint-filter" onchange="renderMaint()">
@@ -521,7 +578,7 @@ function defaultState(){
     profiles:[{id:1,name:'Admin',color:'#1D9E75',bg:'#E1F5EE',role:'Administrateur'},{id:2,name:'Tech 1',color:'#185FA5',bg:'#E6F1FB',role:'Technicien'}],
     nextPId:3,materiel:[],nextMId:1,evenements:[],nextEId:1,
     checklist:{},sortie_stock:{},incidents:[],nextIId:1,mouvements:[],nextMvId:1,
-    activeEvent:null,fiches:[],nextFId:1,scenes:{},patches:{},devis:[]
+    activeEvent:null,fiches:[],nextFId:1,scenes:{},patches:{},devis:[],fixtures:[],rigs:[]
   };
 }
 
@@ -610,7 +667,7 @@ function logout(){
 function showPanel(name){
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
   document.getElementById('panel-'+name).classList.add('active');
-  ['inventaire','evenements','fiches','scene','patch','devis','maintenance'].forEach((n,i)=>{
+  ['inventaire','evenements','fiches','scene','patch','devis','lumiere','maintenance'].forEach((n,i)=>{
     document.querySelectorAll('.nav-btn')[i].classList.toggle('active',n===name);
   });
   if(name==='inventaire'){renderStats();renderInv();}
@@ -619,6 +676,7 @@ function showPanel(name){
   if(name==='scene')initScene();
   if(name==='patch')renderPatch();
   if(name==='devis')renderDevis();
+  if(name==='lumiere')renderLumiere();
   if(name==='maintenance')renderMaint();
 }
 
@@ -2007,6 +2065,438 @@ function getPatchName(){
   const ch=patchData[currentConsole]?.[0];
   return ch?.name?'Patch_'+currentConsole:'SonoManager_patch';
 }
+
+// ═══════════════════════════════════════════════════════════
+//  ÉCLAIRAGE — PATCH DMX & FICHES LUMIÈRE
+// ═══════════════════════════════════════════════════════════
+
+// Bibliothèque de fixtures prédéfinies
+const LUM_LIBRARY = [
+  {type:'par',nom:'PAR LED 12x1W RGBWA',marque:'Générique',modes:[{nom:'5ch',canaux:['R','G','B','W','A']},{nom:'3ch',canaux:['R','G','B']}],chDefaut:5,noteChamSys:''},
+  {type:'par',nom:'PAR LED 18x3W RGB',marque:'Générique',modes:[{nom:'3ch',canaux:['R','G','B']},{nom:'6ch',canaux:['R','G','B','Dim','Stb','Mode']}],chDefaut:3,noteChamSys:''},
+  {type:'lyre',nom:'Lyre Wash 150W',marque:'Générique',modes:[{nom:'8ch',canaux:['Pan','Tilt','P-Fine','T-Fine','Dim','R','G','B']},{nom:'14ch',canaux:['Pan','Tilt','P-Fine','T-Fine','Dim','R','G','B','W','A','Zoom','Stb','Mode','Reset']}],chDefaut:8,noteChamSys:'Pan/Tilt en 16bit'},
+  {type:'lyre',nom:'Lyre Spot 75W',marque:'Générique',modes:[{nom:'12ch',canaux:['Pan','Tilt','P-Fine','T-Fine','Dim','Shutter','Gobo','GoboRot','Color','Focus','Prisme','Reset']}],chDefaut:12,noteChamSys:''},
+  {type:'strobe',nom:'Stroboscope LED',marque:'Générique',modes:[{nom:'2ch',canaux:['Intensité','Vitesse']},{nom:'4ch',canaux:['Intensité','Vitesse','Mode','Dim']}],chDefaut:2,noteChamSys:''},
+  {type:'fog',nom:'Machine à fumée Fog Fury J2',marque:'American DJ',modes:[{nom:'2ch',canaux:['Fumée','Timer']}],chDefaut:2,noteChamSys:''},
+  {type:'led',nom:'Spider 8 têtes',marque:'Générique',modes:[{nom:'7ch',canaux:['R','G','B','Auto','Vitesse','Stb','Dim']},{nom:'26ch',canaux:['Maître','T1R','T1G','T1B','T2R','T2G','T2B','T3R','T3G','T3B','T4R','T4G','T4B','T5R','T5G','T5B','T6R','T6G','T6B','T7R','T7G','T7B','T8R','T8G','T8B','Stb']}],chDefaut:7,noteChamSys:''},
+  {type:'par',nom:'Party Bar LED',marque:'Générique',modes:[{nom:'4ch',canaux:['R','G','B','Stb']},{nom:'7ch',canaux:['R','G','B','Stb','Auto','Vitesse','Dim']}],chDefaut:4,noteChamSys:''},
+  {type:'led',nom:'Récepteur DMX sans fil',marque:'Générique',modes:[{nom:'1ch',canaux:['Contrôle']}],chDefaut:1,noteChamSys:'Récepteur Art-Net/DMX'},
+  {type:'autre',nom:'Gradateur 4 canaux',marque:'Générique',modes:[{nom:'4ch',canaux:['CH1','CH2','CH3','CH4']}],chDefaut:4,noteChamSys:''},
+];
+
+function lumDefaultFixture(){
+  return{
+    id:Date.now(),
+    nom:'Nouvel appareil',
+    marque:'',
+    modele:'',
+    type:'par',
+    univers:1,
+    adresse:1,
+    canaux:4,
+    mode:'',
+    canauxDef:[],
+    couleur:'#F4A01C',
+    quantite:1,
+    note:'',
+    noteChamSys:'',
+    position:'',
+    rigId:null,
+  };
+}
+
+function lumDefaultRig(){
+  return{id:Date.now(),nom:'Rig '+((S.rigs||[]).length+1),date:new Date().toISOString().slice(0,10),lieu:'',notes:''};
+}
+
+function renderLumiere(){
+  if(!S.fixtures)S.fixtures=[];
+  if(!S.rigs)S.rigs=[];
+  lumUpdateRigSelect();
+  lumRenderStats();
+  lumRenderPatch();
+  lumRenderLibrary();
+}
+
+function lumUpdateRigSelect(){
+  const sel=document.getElementById('lum-rig-select');if(!sel)return;
+  sel.innerHTML=`<option value="">— Tous les appareils —</option>`
+    +(S.rigs||[]).map(r=>`<option value="${r.id}">${esc(r.nom)} — ${r.date||''}</option>`).join('');
+}
+
+function lumSelectRig(rigId){
+  lumRenderPatch(rigId||null);
+}
+
+function lumRenderStats(){
+  const fixtures=S.fixtures||[];
+  const total=fixtures.reduce((a,f)=>a+(f.quantite||1),0);
+  const univers=[...new Set(fixtures.map(f=>f.univers))].length;
+  const conflicts=lumFindConflicts();
+  const chUsed=fixtures.reduce((a,f)=>{
+    for(let i=0;i<(f.canaux||1)*(f.quantite||1);i++){
+      const addr=f.adresse+i;if(addr<=512)a++;}return a;},0);
+  document.getElementById('lum-stats').innerHTML=`
+    <div class="stat"><div class="s-label">Appareils</div><div class="s-val">${fixtures.length}</div></div>
+    <div class="stat"><div class="s-label">Unités totales</div><div class="s-val">${total}</div></div>
+    <div class="stat"><div class="s-label">Univers</div><div class="s-val" style="color:var(--blue)">${univers}</div></div>
+    <div class="stat"><div class="s-label">Canaux utilisés</div><div class="s-val" style="color:var(--green)">${chUsed}</div></div>
+    ${conflicts.length?`<div class="stat"><div class="s-label">Conflits</div><div class="s-val" style="color:var(--red)">${conflicts.length}</div></div>`:''}
+  `;
+}
+
+function lumFindConflicts(){
+  const fixtures=S.fixtures||[];
+  const conflicts=[];
+  fixtures.forEach((f,i)=>{
+    const fEnd=f.adresse+(f.canaux||1)*(f.quantite||1)-1;
+    fixtures.forEach((g,j)=>{
+      if(i>=j||f.univers!==g.univers)return;
+      const gEnd=g.adresse+(g.canaux||1)*(g.quantite||1)-1;
+      if(f.adresse<=gEnd&&fEnd>=g.adresse)conflicts.push({a:f.id,b:g.id});
+    });
+  });
+  return conflicts;
+}
+
+function lumRenderPatch(rigId){
+  const fixtures=(S.fixtures||[]).filter(f=>!rigId||f.rigId==rigId);
+  const conflicts=lumFindConflicts();
+  const conflictIds=new Set(conflicts.flatMap(c=>[c.a,c.b]));
+  // Grouper par univers
+  const univers=[...new Set(fixtures.map(f=>f.univers||1))].sort((a,b)=>a-b);
+  const typeColors={par:'lum-type-par',lyre:'lum-type-lyre',strobe:'lum-type-strobe',fog:'lum-type-fog',led:'lum-type-led',autre:'lum-type-autre'};
+  const typeLabels={par:'PAR',lyre:'Lyre',strobe:'Strobe',fog:'Fog/Haze',led:'LED',autre:'Autre'};
+
+  if(!fixtures.length){
+    document.getElementById('lum-patch-grid').innerHTML=`<div class="empty"><p>Aucun appareil. Ajoutez des fixtures ou importez depuis la bibliothèque.</p></div>`;
+    return;
+  }
+
+  document.getElementById('lum-patch-grid').innerHTML=univers.map(u=>{
+    const uFixtures=fixtures.filter(f=>(f.univers||1)===u).sort((a,b)=>a.adresse-b.adresse);
+    // Barre de visualisation DMX 1-512
+    const usedCh=new Array(512).fill(0);
+    uFixtures.forEach(f=>{for(let i=0;i<(f.canaux||1)*(f.quantite||1);i++){if(f.adresse+i<=512)usedCh[f.adresse+i-1]=conflictIds.has(f.id)?2:1;}});
+    const barSegs=[];let cur=0,curType=0;
+    usedCh.forEach((v,i)=>{if(v!==curType){if(cur<i)barSegs.push({type:curType,pct:((i-cur)/512*100).toFixed(1)});cur=i;curType=v;}});
+    barSegs.push({type:curType,pct:((512-cur)/512*100).toFixed(1)});
+    const barHtml=barSegs.map(s=>`<div style="width:${s.pct}%;height:100%;background:${s.type===2?'var(--red)':s.type===1?'var(--green)':'var(--bg)'}"></div>`).join('');
+    const chUsed=usedCh.filter(v=>v>0).length;
+
+    return`<div class="lum-universe">
+      <div class="lum-universe-title">
+        <span>Univers ${u} <span style="font-weight:400;color:var(--text3)">(${uFixtures.length} fixture${uFixtures.length>1?'s':''})</span></span>
+        <span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text2)">${chUsed}/512 ch</span>
+      </div>
+      <div style="height:8px;background:var(--bg);border-radius:4px;margin-bottom:12px;display:flex;overflow:hidden">${barHtml}</div>
+      <div class="lum-grid">
+        ${uFixtures.map(f=>`<div class="lum-fixture ${conflictIds.has(f.id)?'conflict':''}">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+            <div class="lum-addr" style="background:${f.couleur||'#F4A01C'}22;color:${f.couleur||'#F4A01C'}">
+              U${u}·${String(f.adresse).padStart(3,'0')}${f.quantite>1?'×'+f.quantite:''}
+            </div>
+            <div class="td-actions">
+              <button class="btn sm" onclick="lumEditFixture(${f.id})">✏️</button>
+              <button class="btn sm danger" onclick="lumDelFixture(${f.id})">🗑</button>
+            </div>
+          </div>
+          <div class="lum-name">${esc(f.nom)}</div>
+          <div class="lum-meta">
+            <span class="badge ${typeColors[f.type]||'lum-type-autre'}" style="font-size:10px">${typeLabels[f.type]||f.type}</span>
+            ${f.marque?`<span style="margin-left:4px">${esc(f.marque)}</span>`:''}
+          </div>
+          <div class="lum-meta">${f.canaux} canaux${f.mode?' — '+esc(f.mode):''}</div>
+          <div class="lum-meta" style="color:var(--green-dark)">
+            Ch. ${f.adresse} → ${f.adresse+(f.canaux||1)*(f.quantite||1)-1}
+          </div>
+          ${f.canauxDef&&f.canauxDef.length?`<div class="lum-channels">
+            ${f.canauxDef.map((c,i)=>`<span class="lum-ch" style="background:var(--bg);color:var(--text2)">${f.adresse+i}:${c}</span>`).join('')}
+          </div>`:''}
+          ${conflictIds.has(f.id)?`<div style="font-size:11px;color:var(--red);margin-top:4px;font-weight:600">⚠ Conflit d'adresse !</div>`:''}
+          ${f.note?`<div style="font-size:11px;color:var(--text3);margin-top:4px">${esc(f.note)}</div>`:''}
+        </div>`).join('')}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function lumRenderLibrary(){
+  const typeColors={par:'lum-type-par',lyre:'lum-type-lyre',strobe:'lum-type-strobe',fog:'lum-type-fog',led:'lum-type-led',autre:'lum-type-autre'};
+  const typeLabels={par:'PAR',lyre:'Lyre',strobe:'Strobe',fog:'Fog/Haze',led:'LED',autre:'Autre'};
+  document.getElementById('lum-library').innerHTML=LUM_LIBRARY.map((lib,i)=>`
+    <div class="lib-fixture" onclick="lumAddFromLibrary(${i})">
+      <span class="badge ${typeColors[lib.type]||'lum-type-autre'}" style="font-size:10px;flex-shrink:0">${typeLabels[lib.type]||lib.type}</span>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:500">${esc(lib.nom)}</div>
+        <div style="font-size:11px;color:var(--text2)">${esc(lib.marque)} · ${lib.modes.map(m=>m.nom).join(' / ')}</div>
+      </div>
+      <button class="btn sm primary">＋ Ajouter</button>
+    </div>`).join('');
+}
+
+function lumAddFromLibrary(idx){
+  const lib=LUM_LIBRARY[idx];
+  const mode=lib.modes[0];
+  const lastAddr=lumNextFreeAddress(1);
+  const f={...lumDefaultFixture(),
+    nom:lib.nom,marque:lib.marque,type:lib.type,
+    canaux:lib.chDefaut,mode:mode.nom,
+    canauxDef:mode.canaux,
+    adresse:lastAddr,
+    noteChamSys:lib.noteChamSys,
+    couleur:lib.type==='par'?'#F4A01C':lib.type==='lyre'?'#185FA5':lib.type==='strobe'?'#A32D2D':lib.type==='fog'?'#888780':'#1D9E75'
+  };
+  if(!S.fixtures)S.fixtures=[];
+  S.fixtures.push(f);
+  save();renderLumiere();
+  showToast(`✅ ${lib.nom} ajouté — adresse DMX ${lastAddr}`);
+}
+
+function lumNextFreeAddress(univers){
+  const fixtures=(S.fixtures||[]).filter(f=>(f.univers||1)===univers).sort((a,b)=>a.adresse-b.adresse);
+  let addr=1;
+  fixtures.forEach(f=>{
+    if(f.adresse<=addr)addr=Math.max(addr,f.adresse+(f.canaux||1)*(f.quantite||1));
+  });
+  return Math.min(addr,513);
+}
+
+function lumAutoAddress(){
+  const fixtures=(S.fixtures||[]).slice().sort((a,b)=>(a.univers||1)-(b.univers||1)||a.adresse-b.adresse);
+  let currentUnivers=1,currentAddr=1;
+  fixtures.forEach(f=>{
+    if((f.univers||1)!==currentUnivers){currentUnivers=f.univers||1;currentAddr=1;}
+    f.adresse=currentAddr;
+    currentAddr+=((f.canaux||1)*(f.quantite||1));
+    if(currentAddr>512){currentUnivers++;currentAddr=1;f.univers=currentUnivers;f.adresse=1;currentAddr=(f.canaux||1)*(f.quantite||1)+1;}
+  });
+  save();renderLumiere();showToast('⚡ Adressage automatique effectué');
+}
+
+function lumCheckConflicts(){
+  const conflicts=lumFindConflicts();
+  if(!conflicts.length){showToast("✅ Aucun conflit d'adresse !");}
+  else{showToast(`⚠ ${conflicts.length} conflit(s) détecté(s)`);}
+  renderLumiere();
+}
+
+function lumDelFixture(id){
+  if(!confirm('Supprimer cet appareil ?'))return;
+  S.fixtures=S.fixtures.filter(f=>f.id!==id);save();renderLumiere();
+}
+
+function lumNewFixture(){lumOpenEditor(null);}
+function lumEditFixture(id){lumOpenEditor(S.fixtures.find(f=>f.id===id));}
+
+function lumNewRig(){
+  const nom=prompt('Nom du rig :','Rig concert');if(!nom)return;
+  const rig={...lumDefaultRig(),nom};
+  if(!S.rigs)S.rigs=[];
+  S.rigs.push(rig);save();lumUpdateRigSelect();showToast(`✅ Rig "${nom}" créé`);
+}
+
+function lumOpenEditor(fixture){
+  const isNew=!fixture;
+  const f=fixture||lumDefaultFixture();
+  const typeOptions=['par','lyre','strobe','fog','led','autre'].map(t=>`<option value="${t}" ${f.type===t?'selected':''}>${{par:'PAR LED',lyre:'Lyre',strobe:'Stroboscope',fog:'Fog/Haze',led:'LED Bar',autre:'Autre'}[t]}</option>`).join('');
+  const rigOptions=`<option value="">Sans rig</option>`+(S.rigs||[]).map(r=>`<option value="${r.id}" ${f.rigId==r.id?'selected':''}>${esc(r.nom)}</option>`).join('');
+  const libOptions=LUM_LIBRARY.map((l,i)=>`<option value="${i}">${esc(l.nom)} (${l.modes.map(m=>m.nom).join('/')})</option>`).join('');
+
+  const root=document.getElementById('modal-root');
+  root.innerHTML=`<div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+    <div class="modal" style="max-width:560px">
+      <div class="modal-head"><h3>${isNew?'Ajouter un appareil':'Modifier appareil'}</h3></div>
+      <div class="modal-body">
+        ${isNew?`<div class="field"><label>Importer depuis bibliothèque</label>
+          <div style="display:flex;gap:6px">
+            <select id="lf-lib" style="flex:1">${libOptions}</select>
+            <button class="btn sm primary" onclick="lumEditorLoadLib()">Charger</button>
+          </div></div><hr style="margin:12px 0;border:none;border-top:1px solid var(--border)">`:'' }
+        <div class="field-row">
+          <div class="field"><label>Nom</label><input id="lf-nom" type="text" value="${esc(f.nom)}"></div>
+          <div class="field"><label>Marque</label><input id="lf-marque" type="text" value="${esc(f.marque)}"></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Type</label><select id="lf-type">${typeOptions}</select></div>
+          <div class="field"><label>Mode DMX</label><input id="lf-mode" type="text" value="${esc(f.mode)}" placeholder="ex: 8ch, 16ch…"></div>
+        </div>
+        <div class="field-row three">
+          <div class="field"><label>Univers</label><input id="lf-univers" type="number" min="1" max="255" value="${f.univers||1}"></div>
+          <div class="field"><label>Adresse DMX</label><input id="lf-adresse" type="number" min="1" max="512" value="${f.adresse||1}"></div>
+          <div class="field"><label>Nb canaux</label><input id="lf-canaux" type="number" min="1" max="512" value="${f.canaux||4}"></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Quantité</label><input id="lf-quantite" type="number" min="1" value="${f.quantite||1}"></div>
+          <div class="field"><label>Couleur d'identification</label><input id="lf-couleur" type="color" value="${f.couleur||'#F4A01C'}" style="height:38px;padding:2px"></div>
+        </div>
+        <div class="field"><label>Définition des canaux (séparés par virgule)</label>
+          <input id="lf-chdef" type="text" value="${(f.canauxDef||[]).join(',')}" placeholder="ex: R,G,B,W,Dim"></div>
+        <div class="field-row">
+          <div class="field"><label>Position sur scène</label><input id="lf-position" type="text" value="${esc(f.position||'')}" placeholder="ex: Jardin, Centre…"></div>
+          <div class="field"><label>Rig</label><select id="lf-rig">${rigOptions}</select></div>
+        </div>
+        <div class="field"><label>Note ChamSys / Programmation</label>
+          <textarea id="lf-note" rows="2" placeholder="Notes de programmation, particularités…">${esc(f.noteChamSys||f.note||'')}</textarea></div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn" onclick="closeModal()">Annuler</button>
+        <button class="btn primary" onclick="lumSaveFixture(${isNew?'null':f.id})">Enregistrer</button>
+      </div>
+    </div></div>`;
+}
+
+function lumEditorLoadLib(){
+  const idx=parseInt(document.getElementById('lf-lib').value);
+  const lib=LUM_LIBRARY[idx];if(!lib)return;
+  document.getElementById('lf-nom').value=lib.nom;
+  document.getElementById('lf-marque').value=lib.marque;
+  document.getElementById('lf-type').value=lib.type;
+  document.getElementById('lf-canaux').value=lib.chDefaut;
+  document.getElementById('lf-mode').value=lib.modes[0].nom;
+  document.getElementById('lf-chdef').value=lib.modes[0].canaux.join(',');
+  showToast(`✅ ${lib.nom} chargé`);
+}
+
+function lumSaveFixture(existingId){
+  const data={
+    nom:(document.getElementById('lf-nom').value||'Appareil').trim(),
+    marque:(document.getElementById('lf-marque').value||'').trim(),
+    type:document.getElementById('lf-type').value,
+    mode:(document.getElementById('lf-mode').value||'').trim(),
+    univers:parseInt(document.getElementById('lf-univers').value)||1,
+    adresse:parseInt(document.getElementById('lf-adresse').value)||1,
+    canaux:parseInt(document.getElementById('lf-canaux').value)||4,
+    quantite:parseInt(document.getElementById('lf-quantite').value)||1,
+    couleur:document.getElementById('lf-couleur').value,
+    canauxDef:(document.getElementById('lf-chdef').value||'').split(',').map(s=>s.trim()).filter(Boolean),
+    position:(document.getElementById('lf-position').value||'').trim(),
+    rigId:document.getElementById('lf-rig').value||null,
+    noteChamSys:(document.getElementById('lf-note').value||'').trim(),
+    note:(document.getElementById('lf-note').value||'').trim(),
+  };
+  if(!S.fixtures)S.fixtures=[];
+  if(existingId&&existingId!=='null'){
+    const idx=S.fixtures.findIndex(f=>f.id===existingId);
+    if(idx>=0)Object.assign(S.fixtures[idx],data);
+  }else{
+    S.fixtures.push({id:Date.now(),...data});
+  }
+  save();closeModal();renderLumiere();
+  // Vérifier conflits après ajout
+  const conflicts=lumFindConflicts();
+  if(conflicts.length)showToast(`⚠ Attention : conflit d'adresse DMX détecté !`);
+  else showToast('✅ Appareil sauvegardé');
+}
+
+// ── Export PDF Patch DMX ──
+function lumExportPDF(){
+  loadJsPDF(()=>{
+    const{jsPDF}=window.jspdf;
+    const doc=new jsPDF({unit:'mm',format:'a4'});
+    const fixtures=(S.fixtures||[]).sort((a,b)=>(a.univers||1)-(b.univers||1)||a.adresse-b.adresse);
+    const W=210,mg=15;let y=mg;
+    const typeLabels={par:'PAR',lyre:'Lyre',strobe:'Strobe',fog:'Fog',led:'LED',autre:'Autre'};
+
+    doc.setFillColor(29,158,117);doc.rect(0,0,W,28,'F');
+    doc.setTextColor(255,255,255);doc.setFontSize(18);doc.setFont('helvetica','bold');
+    doc.text('PATCH DMX — ÉCLAIRAGE',mg,14);
+    doc.setFontSize(9);doc.setFont('helvetica','normal');
+    doc.text(`${fixtures.length} appareils · Généré le ${today()}`,mg,22);
+    doc.text('SonoManager — DABRIKSON',W-mg,22,{align:'right'});
+    y=36;
+
+    const univers=[...new Set(fixtures.map(f=>f.univers||1))].sort((a,b)=>a-b);
+    univers.forEach(u=>{
+      if(y>260){doc.addPage();y=mg;}
+      doc.setFillColor(29,158,117);doc.rect(mg,y,W-mg*2,7,'F');
+      doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(8);
+      const uCh=(S.fixtures||[]).filter(f=>(f.univers||1)===u).reduce((a,f)=>a+(f.canaux||1)*(f.quantite||1),0);
+      doc.text(`UNIVERS ${u}`,mg+3,y+5);
+      doc.text(`${uCh}/512 canaux utilisés`,W-mg-3,y+5,{align:'right'});
+      y+=9;
+
+      doc.setFillColor(240,250,245);doc.rect(mg,y,W-mg*2,6,'F');
+      doc.setTextColor(29,158,117);doc.setFont('helvetica','bold');doc.setFontSize(7);
+      doc.text('ADDR',mg+2,y+4);doc.text('NOM / MARQUE',mg+18,y+4);
+      doc.text('TYPE',mg+90,y+4);doc.text('MODE',mg+108,y+4);
+      doc.text('CH',mg+130,y+4);doc.text('QTÉ',mg+140,y+4);
+      doc.text('DE→À',mg+152,y+4);doc.text('CANAUX',mg+172,y+4);
+      y+=7;
+
+      const uFixtures=fixtures.filter(f=>(f.univers||1)===u);
+      uFixtures.forEach((f,i)=>{
+        if(y>275){doc.addPage();y=mg;}
+        if(i%2===0){doc.setFillColor(248,252,250);doc.rect(mg,y-1,W-mg*2,8,'F');}
+        doc.setFont('helvetica','bold');doc.setTextColor(29,100,75);doc.setFontSize(8);
+        doc.text(String(f.adresse).padStart(3,'0'),mg+2,y+4);
+        doc.setFont('helvetica','normal');doc.setTextColor(30,30,28);
+        doc.text((f.nom||'—').slice(0,24),mg+18,y+4);
+        doc.setFontSize(7);doc.setTextColor(100,100,95);
+        if(f.marque)doc.text(f.marque.slice(0,14),mg+18,y+7);
+        doc.setFontSize(8);doc.setTextColor(30,30,28);
+        doc.text(typeLabels[f.type]||f.type,mg+90,y+4);
+        doc.text((f.mode||'—').slice(0,10),mg+108,y+4);
+        doc.text(String(f.canaux||1),mg+130,y+4);
+        doc.text(String(f.quantite||1),mg+140,y+4);
+        const end=f.adresse+(f.canaux||1)*(f.quantite||1)-1;
+        doc.text(`${f.adresse}→${end}`,mg+152,y+4);
+        if(f.canauxDef&&f.canauxDef.length){
+          doc.setFontSize(6);doc.setTextColor(130,130,125);
+          doc.text(f.canauxDef.slice(0,8).join(',').slice(0,28),mg+172,y+4);
+        }
+        y+=9;
+      });
+      y+=4;
+    });
+
+    // Notes ChamSys
+    const withNotes=(S.fixtures||[]).filter(f=>f.noteChamSys);
+    if(withNotes.length){
+      if(y>240){doc.addPage();y=mg;}
+      doc.setFillColor(24,95,165);doc.rect(mg,y,W-mg*2,7,'F');
+      doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(8);
+      doc.text('NOTES CHAMSY / PROGRAMMATION',mg+3,y+5);y+=9;
+      doc.setFont('helvetica','normal');doc.setTextColor(30,30,28);
+      withNotes.forEach(f=>{
+        if(y>270){doc.addPage();y=mg;}
+        doc.setFont('helvetica','bold');doc.setFontSize(8);
+        doc.text(`U${f.univers}·${String(f.adresse).padStart(3,'0')} — ${f.nom}`,mg+3,y+4);
+        doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(80,80,75);
+        doc.text(f.noteChamSys.slice(0,80),mg+3,y+8);
+        doc.setTextColor(30,30,28);y+=12;
+      });
+    }
+
+    doc.save(`patch_dmx_${today().replace(/\//g,'-')}.pdf`);
+    showToast('✅ Patch DMX PDF généré');
+  });
+}
+
+// ── Export ChamSys MagicQ ──
+function lumExportChamSys(){
+  const fixtures=(S.fixtures||[]).sort((a,b)=>(a.univers||1)-(b.univers||1)||a.adresse-b.adresse);
+  if(!fixtures.length){showToast('⚠ Aucun appareil à exporter');return;}
+  let csv="Fixture,Manufacturer,Short Name,Mode,Universe,DMX Address,Quantity,Notes\n";
+  fixtures.forEach(f=>{
+    csv+=`"${f.nom||''}", "${f.marque||''}", "${(f.nom||'').slice(0,8)}", "${f.mode||''}", ${f.univers||1}, ${f.adresse}, ${f.quantite||1}, "${f.noteChamSys||''}"\n`;
+  });
+  // Aussi générer un fichier texte de patch pour ChamSys
+  let patch="// Export SonoManager vers ChamSys MagicQ\n// Importez via : Setup > Patch > Import Patch\n\n";
+  fixtures.forEach((f,i)=>{
+    for(let q=0;q<(f.quantite||1);q++){
+      const addr=f.adresse+q*(f.canaux||1);
+      patch+=`${String(i+1+q).padStart(3,"0")},${f.univers||1},${String(addr).padStart(3,"0")},${f.canaux||1},"${f.nom}","${f.marque}"\n`;
+    }
+  });
+  const blob=new Blob([patch],{type:'text/plain'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`chamsys_patch_${today().replace(/\//g,'-')}.csv`;
+  a.click();URL.revokeObjectURL(a.href);
+  showToast('✅ Export ChamSys généré — importez via Setup > Patch > Import');
+}
+
 
 // ═══ CHECKLIST ═══
 let currentChecklistEvId = null;
