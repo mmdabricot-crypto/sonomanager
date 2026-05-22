@@ -928,7 +928,7 @@ function openFiche(id){
       <h2 style="font-size:18px;font-weight:600;flex:1">${esc(f.artiste||'Sans titre')}</h2>
       <button class="btn warn" onclick="openModal('add-fiche',${f.id})">✏️ Modifier</button>
       <button class="btn primary" onclick="exportFichePDF(${f.id})">⬇ PDF</button>
-      <button class="btn" onclick="showPanel('patch');document.getElementById('patch-fiche').value=${f.id};loadPatchFromFiche(${f.id})">🎛 Patch</button>
+      <button class="btn blue" onclick="lumOpenPatchFromFicheModal(S.fiches.find(x=>x.id===${f.id}))">🎛 → Patch console</button>
       <button class="btn" onclick="showPanel('scene');document.getElementById('scene-select').value=${f.id}">🎭 Scène</button>
     </div>
     <div class="ft-section">
@@ -1679,11 +1679,174 @@ function pBus(n,f,v){if(!patchData[currentConsole+'_buses'])patchData[currentCon
 function pBadge(i,b){if(!patchData[currentConsole][i])patchData[currentConsole][i]={};patchData[currentConsole][i][b]=!patchData[currentConsole][i][b];renderPatch();}
 function loadPatchFromFiche(ficheId){
   const f=S.fiches.find(x=>x.id==ficheId);if(!f)return;
-  const cons=CONSOLES[currentConsole];
-  patchData[currentConsole]=(f.canaux||[]).slice(0,cons.channels).map(c=>({name:c.nom||'',source:c.micro||'',phantom:!!c.phantom,gain:'',note:c.note||''}));
-  const aux=cons.buses.filter(b=>b.type==='aux');patchData[currentConsole+'_buses']={};
-  (f.retours||[]).forEach((r,i)=>{if(aux[i])patchData[currentConsole+'_buses'][aux[i].num]={dest:r.musicien||''};});
-  renderPatch();showToast(`✅ Patch chargé depuis "${f.artiste||'fiche'}"`);
+  // Afficher un modal de choix console + aperçu avant import
+  lumOpenPatchFromFicheModal(f);
+}
+
+function lumOpenPatchFromFicheModal(f){
+  const canaux=f.canaux||[];
+  const retours=f.retours||[];
+  const consoleOptions=Object.entries(CONSOLES).map(([k,c])=>`
+    <div class="console-choice ${k==='wing'?'active':''}" id="cc-${k}" onclick="selectConsoleChoice('${k}')"
+      style="border:2px solid ${k==='wing'?c.color:'var(--border)'};background:${k==='wing'?c.color+'11':'var(--surface)'};border-radius:var(--radius);padding:12px;cursor:pointer;transition:all .15s;flex:1">
+      <div style="font-weight:700;font-size:13px;color:${k==='wing'?c.color:'var(--text)'}">${c.name}</div>
+      <div style="font-size:11px;color:var(--text2);margin-top:3px">${c.channels} canaux · ${c.buses.filter(b=>b.type==='aux').length} AUX</div>
+    </div>`).join('');
+
+  // Aperçu du mapping
+  const previewRows=canaux.slice(0,8).map((c,i)=>`
+    <div style="display:grid;grid-template-columns:32px 1fr 1fr 40px;gap:6px;padding:5px 0;border-bottom:1px solid rgba(0,0,0,0.04);font-size:12px;align-items:center">
+      <span style="font-family:'DM Mono',monospace;color:var(--text3);font-size:11px">${String(i+1).padStart(2,'0')}</span>
+      <span style="font-weight:500">${esc(c.nom||'—')}</span>
+      <span style="color:var(--text2)">${esc(c.micro||'—')}</span>
+      <span style="color:${c.phantom?'var(--red)':'var(--text3)'}">${c.phantom?'48V':'—'}</span>
+    </div>`).join('');
+
+  const retourRows=retours.slice(0,4).map((r,i)=>`
+    <div style="display:grid;grid-template-columns:32px 1fr 1fr;gap:6px;padding:5px 0;border-bottom:1px solid rgba(0,0,0,0.04);font-size:12px">
+      <span style="font-family:'DM Mono',monospace;color:var(--text3);font-size:11px">R${i+1}</span>
+      <span style="font-weight:500">${esc(r.musicien||'—')}</span>
+      <span style="color:var(--text2)">${esc(r.contenu||'—')} · ${esc(r.type||'Wedge')}</span>
+    </div>`).join('');
+
+  const root=document.getElementById('modal-root');
+  root.innerHTML=`<div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+    <div class="modal" style="max-width:580px">
+      <div class="modal-head">
+        <h3>🎛 Charger patch depuis fiche technique</h3>
+        <div style="font-size:13px;color:var(--text2);margin-top:4px">${esc(f.artiste||'Sans titre')} · ${canaux.length} canaux · ${retours.length} retours</div>
+      </div>
+      <div class="modal-body">
+
+        <!-- Choix console -->
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);margin-bottom:10px">1. Choisir la console cible</div>
+        <div style="display:flex;gap:8px;margin-bottom:16px" id="console-choices">
+          ${consoleOptions}
+        </div>
+
+        <!-- Options de chargement -->
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);margin-bottom:10px">2. Options</div>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px">
+            <input type="checkbox" id="opt-names" checked style="accent-color:var(--green)">
+            Importer les noms des instruments / sources
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px">
+            <input type="checkbox" id="opt-micros" checked style="accent-color:var(--green)">
+            Importer les microphones / DI
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px">
+            <input type="checkbox" id="opt-phantom" checked style="accent-color:var(--green)">
+            Importer le phantom 48V
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px">
+            <input type="checkbox" id="opt-notes" checked style="accent-color:var(--green)">
+            Importer les notes de canal
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px">
+            <input type="checkbox" id="opt-retours" checked style="accent-color:var(--green)">
+            Importer les retours scène dans les AUX
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px">
+            <input type="checkbox" id="opt-reset" style="accent-color:var(--amber)">
+            Réinitialiser le patch existant avant import
+          </label>
+        </div>
+
+        <!-- Aperçu canaux -->
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);margin-bottom:8px">
+          Aperçu — ${canaux.length} canaux${canaux.length>8?' (8 premiers affichés)':''}
+        </div>
+        <div style="background:var(--bg);border-radius:var(--radius);padding:10px;margin-bottom:12px">
+          <div style="display:grid;grid-template-columns:32px 1fr 1fr 40px;gap:6px;padding:5px 0;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text3);border-bottom:1px solid var(--border)">
+            <span>CH</span><span>Instrument</span><span>Micro / DI</span><span>48V</span>
+          </div>
+          ${previewRows}
+          ${canaux.length>8?`<div style="font-size:11px;color:var(--text3);text-align:center;padding-top:6px">+${canaux.length-8} canaux supplémentaires…</div>`:''}
+        </div>
+
+        <!-- Aperçu retours -->
+        ${retours.length?`<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);margin-bottom:8px">
+          Aperçu — ${retours.length} retours scène → AUX
+        </div>
+        <div style="background:var(--bg);border-radius:var(--radius);padding:10px">
+          <div style="display:grid;grid-template-columns:32px 1fr 1fr;gap:6px;padding:5px 0;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text3);border-bottom:1px solid var(--border)">
+            <span>AUX</span><span>Musicien</span><span>Contenu · Type</span>
+          </div>
+          ${retourRows}
+          ${retours.length>4?`<div style="font-size:11px;color:var(--text3);text-align:center;padding-top:6px">+${retours.length-4} retours supplémentaires…</div>`:''}
+        </div>`:''}
+
+      </div>
+      <div class="modal-foot">
+        <button class="btn" onclick="closeModal()">Annuler</button>
+        <button class="btn primary" onclick="doLoadPatchFromFiche(${f.id})">🎛 Charger le patch</button>
+      </div>
+    </div></div>`;
+}
+
+let _selectedConsoleForImport = 'wing';
+function selectConsoleChoice(key){
+  _selectedConsoleForImport=key;
+  Object.keys(CONSOLES).forEach(k=>{
+    const el=document.getElementById('cc-'+k);if(!el)return;
+    const c=CONSOLES[k];
+    el.style.border=`2px solid ${k===key?c.color:'var(--border)'}`;
+    el.style.background=k===key?c.color+'11':'var(--surface)';
+    el.querySelector('div').style.color=k===key?c.color:'var(--text)';
+  });
+}
+
+function doLoadPatchFromFiche(ficheId){
+  const f=S.fiches.find(x=>x.id===ficheId);if(!f)return;
+  const targetConsole=_selectedConsoleForImport||currentConsole;
+  const cons=CONSOLES[targetConsole];
+  const optNames=document.getElementById('opt-names')?.checked!==false;
+  const optMicros=document.getElementById('opt-micros')?.checked!==false;
+  const optPhantom=document.getElementById('opt-phantom')?.checked!==false;
+  const optNotes=document.getElementById('opt-notes')?.checked!==false;
+  const optRetours=document.getElementById('opt-retours')?.checked!==false;
+  const optReset=document.getElementById('opt-reset')?.checked||false;
+
+  // Basculer sur la console cible
+  setConsole(targetConsole);
+
+  // Reset si demandé
+  if(optReset){
+    patchData[targetConsole]=[];
+    patchData[targetConsole+'_buses']={};
+  }
+
+  // Import canaux
+  if(!patchData[targetConsole])patchData[targetConsole]=[];
+  const canaux=f.canaux||[];
+  canaux.slice(0,cons.channels).forEach((c,i)=>{
+    if(!patchData[targetConsole][i])patchData[targetConsole][i]={};
+    const ch=patchData[targetConsole][i];
+    if(optNames&&c.nom)ch.name=c.nom;
+    if(optMicros&&c.micro)ch.source=c.micro;
+    if(optPhantom)ch.phantom=!!c.phantom;
+    if(optNotes&&c.note)ch.note=c.note;
+  });
+
+  // Import retours → AUX
+  if(optRetours){
+    const auxBuses=cons.buses.filter(b=>b.type==='aux');
+    if(!patchData[targetConsole+'_buses'])patchData[targetConsole+'_buses']={};
+    (f.retours||[]).forEach((r,i)=>{
+      if(!auxBuses[i])return;
+      const busNum=auxBuses[i].num;
+      patchData[targetConsole+'_buses'][busNum]={
+        dest:r.musicien||'',
+        contenu:r.contenu||'',
+        type:r.type||'Wedge',
+      };
+    });
+  }
+
+  closeModal();
+  renderPatch();
+  showToast(`✅ Patch "${f.artiste}" chargé sur ${cons.name} — ${canaux.length} canaux importés`);
 }
 function autoPatch(){
   const fId=document.getElementById('patch-fiche').value;if(fId){loadPatchFromFiche(fId);return;}
