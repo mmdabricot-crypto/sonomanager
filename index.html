@@ -523,8 +523,8 @@ tbody tr:hover td{background:var(--bg)}
       <!-- BIBLIOTHÈQUE -->
       <div class="lum-panel" id="lum-tab-library">
         <div class="toolbar" style="margin-top:1rem">
-          <input type="text" id="lum-lib-search" placeholder="Rechercher…" oninput="lumRenderLibrary()" style="max-width:220px">
-          <select id="lum-lib-filter" onchange="lumRenderLibrary()" style="max-width:160px">
+          <input type="text" id="lum-lib-search" placeholder="Rechercher…" oninput="lumRenderLibrary()" style="max-width:200px">
+          <select id="lum-lib-filter" onchange="lumRenderLibrary()" style="max-width:150px">
             <option value="">Tous types</option>
             <option value="par">PAR LED</option>
             <option value="lyre">Lyre</option>
@@ -533,8 +533,10 @@ tbody tr:hover td{background:var(--bg)}
             <option value="led">LED Bar</option>
             <option value="autre">Autre</option>
           </select>
-          <button class="btn" onclick="lumImportGDTF()">⬆ Import GDTF</button>
-          <button class="btn" onclick="lumImportQLC()">⬆ Import QLC+</button>
+          <button class="btn primary" onclick="lumNewLibFixture()">＋ Ajouter à la bibliothèque</button>
+          <button class="btn" onclick="lumImportGDTF()">⬆ GDTF</button>
+          <button class="btn" onclick="lumImportQLC()">⬆ QLC+</button>
+          <button class="btn" onclick="lumResetLibrary()" title="Réinitialiser avec les appareils par défaut">↺ Défauts</button>
         </div>
         <div id="lum-library"></div>
       </div>
@@ -661,7 +663,7 @@ function defaultState(){
     profiles:[{id:1,name:'Admin',color:'#1D9E75',bg:'#E1F5EE',role:'Administrateur'},{id:2,name:'Tech 1',color:'#185FA5',bg:'#E6F1FB',role:'Technicien'}],
     nextPId:3,materiel:[],nextMId:1,evenements:[],nextEId:1,
     checklist:{},sortie_stock:{},incidents:[],nextIId:1,mouvements:[],nextMvId:1,
-    activeEvent:null,fiches:[],nextFId:1,scenes:{},patches:{},devis:[],fixtures:[],rigs:[],lumScenes:[]
+    activeEvent:null,fiches:[],nextFId:1,scenes:{},patches:{},devis:[],fixtures:[],rigs:[],lumScenes:[],lumLibrary:null
   };
 }
 
@@ -2196,6 +2198,9 @@ function renderLumiere(){
   if(!S.fixtures)S.fixtures=[];
   if(!S.rigs)S.rigs=[];
   if(!S.lumScenes)S.lumScenes=[];
+  if(!S.lumLibrary||S.lumLibrary.length===0){
+    S.lumLibrary=LUM_LIBRARY.map((l,i)=>({...l,id:i+1,userAdded:false}));
+  }
   lumUpdateRigSelect();
   lumRenderStats();
   lumRenderPatch();
@@ -2861,19 +2866,171 @@ function lumRenderPatch(rigId){
   }).join('');
 }
 
-function lumRenderLibrary(){
-  const typeColors={par:'lum-type-par',lyre:'lum-type-lyre',strobe:'lum-type-strobe',fog:'lum-type-fog',led:'lum-type-led',autre:'lum-type-autre'};
-  const typeLabels={par:'PAR',lyre:'Lyre',strobe:'Strobe',fog:'Fog/Haze',led:'LED',autre:'Autre'};
-  document.getElementById('lum-library').innerHTML=LUM_LIBRARY.map((lib,i)=>`
-    <div class="lib-fixture" onclick="lumAddFromLibrary(${i})">
-      <span class="badge ${typeColors[lib.type]||'lum-type-autre'}" style="font-size:10px;flex-shrink:0">${typeLabels[lib.type]||lib.type}</span>
-      <div style="flex:1">
-        <div style="font-size:13px;font-weight:500">${esc(lib.nom)}</div>
-        <div style="font-size:11px;color:var(--text2)">${esc(lib.marque)} · ${lib.modes.map(m=>m.nom).join(' / ')}</div>
-      </div>
-      <button class="btn sm primary">＋ Ajouter</button>
-    </div>`).join('');
+function lumGetLibrary(){
+  if(!S.lumLibrary||S.lumLibrary.length===0){
+    S.lumLibrary=LUM_LIBRARY.map((l,i)=>({...l,id:i+1,userAdded:false}));
+  }
+  return S.lumLibrary;
 }
+
+function lumRenderLibrary(){
+  const q=(document.getElementById('lum-lib-search')?.value||'').toLowerCase();
+  const f=document.getElementById('lum-lib-filter')?.value||'';
+  const lib=lumGetLibrary();
+  const filtered=lib.filter(l=>
+    (!q||l.nom.toLowerCase().includes(q)||(l.marque||'').toLowerCase().includes(q))&&
+    (!f||l.type===f)
+  );
+  const typeColors={par:'lum-type-par',lyre:'lum-type-lyre',strobe:'lum-type-strobe',fog:'lum-type-fog',led:'lum-type-led',autre:'lum-type-autre'};
+  const typeLabels={par:'PAR LED',lyre:'Lyre',strobe:'Strobe',fog:'Fog',led:'LED',autre:'Autre'};
+  const el=document.getElementById('lum-library');if(!el)return;
+  if(!filtered.length){el.innerHTML=`<div class="empty"><p>Aucun appareil trouve.</p></div>`;return;}
+  el.innerHTML=`
+    <div style="font-size:12px;color:var(--text2);padding:8px 12px;background:var(--bg);border-bottom:1px solid var(--border)">
+      ${filtered.length} appareil${filtered.length>1?'s':''} |
+      <span style="color:var(--green-dark)">${lib.filter(l=>l.userAdded).length} perso${lib.filter(l=>l.userAdded).length>1?'s':''}</span>
+    </div>
+    ${filtered.map(lib=>`
+    <div class="lib-fixture" style="padding:10px 14px;cursor:default">
+      <span class="badge ${typeColors[lib.type]||'lum-type-autre'}" style="font-size:10px;flex-shrink:0;min-width:50px;justify-content:center">${typeLabels[lib.type]||lib.type}</span>
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="font-size:13px;font-weight:600">${esc(lib.nom)}</span>
+          ${lib.userAdded?`<span style="font-size:10px;background:var(--green-light);color:var(--green-dark);padding:1px 6px;border-radius:10px">Perso</span>`:''}
+        </div>
+        <div style="font-size:11px;color:var(--text2);margin-top:2px">
+          ${lib.marque?esc(lib.marque)+' | ':''}${(lib.modes||[]).map(m=>`${m.nom} (${(m.canaux||[]).length||lib.chDefaut||'?'}ch)`).join(' / ')}
+        </div>
+        ${lib.noteChamSys?`<div style="font-size:10px;color:var(--text3)">ChamSys: ${esc(lib.noteChamSys)}</div>`:''}
+      </div>
+      <div style="display:flex;gap:4px;flex-shrink:0">
+        <button class="btn sm primary" onclick="lumAddFromLibraryById(${lib.id})">+ Patch</button>
+        <button class="btn sm" onclick="lumEditLibFixture(${lib.id})">✏️</button>
+        ${lib.userAdded?`<button class="btn sm danger" onclick="lumDelLibFixture(${lib.id})">🗑</button>`:''}
+      </div>
+    </div>`).join('')}`;
+}
+
+function lumNewLibFixture(){lumOpenLibEditor(null);}
+function lumEditLibFixture(id){const lib=lumGetLibrary().find(l=>l.id===id);if(lib)lumOpenLibEditor(lib);}
+function lumDelLibFixture(id){
+  if(!confirm('Supprimer ?'))return;
+  S.lumLibrary=S.lumLibrary.filter(l=>l.id!==id);
+  save();lumRenderLibrary();showToast('Supprime de la bibliotheque');
+}
+function lumResetLibrary(){
+  if(!confirm('Reinitialiser avec les appareils par defaut ? Vos appareils personnels seront conserves.'))return;
+  const user=(S.lumLibrary||[]).filter(l=>l.userAdded);
+  S.lumLibrary=[...LUM_LIBRARY.map((l,i)=>({...l,id:i+1,userAdded:false})),...user];
+  save();lumRenderLibrary();showToast('Bibliotheque reinitialisee');
+}
+
+function lumOpenLibEditor(existing){
+  const isNew=!existing;
+  const lib=existing||{id:Date.now(),nom:'',marque:'',type:'par',chDefaut:4,modes:[{nom:'Default',canaux:[]}],noteChamSys:'',userAdded:true};
+  const typeOptions=['par','lyre','strobe','fog','led','autre'].map(t=>
+    `<option value="${t}" ${lib.type===t?'selected':''}>${{par:'PAR LED',lyre:'Lyre',strobe:'Stroboscope',fog:'Fog/Haze',led:'LED Bar',autre:'Autre'}[t]}</option>`
+  ).join('');
+  const modesHtml=(lib.modes||[{nom:'Default',canaux:[]}]).map((m,i)=>`
+    <div style="background:var(--bg);border-radius:var(--radius);padding:10px;margin-bottom:8px" id="lib-mode-${i}">
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
+        <input placeholder="Nom du mode (ex: 8ch)" value="${esc(m.nom||'')}" id="lm-nom-${i}" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px">
+        <input type="number" placeholder="Nb ch" value="${m.canaux?.length||lib.chDefaut||4}" id="lm-ch-${i}" min="1" max="512" style="width:72px;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;font-family:'DM Mono',monospace">
+        <button class="btn sm danger" onclick="this.closest('[id^=lib-mode]').remove()">✕</button>
+      </div>
+      <input placeholder="Canaux: R,G,B,W,Dim,Stb…" value="${esc((m.canaux||[]).join(','))}" id="lm-def-${i}" style="width:100%;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:'DM Mono',monospace">
+    </div>`).join('');
+  const root=document.getElementById('modal-root');
+  root.innerHTML=`<div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+    <div class="modal" style="max-width:540px">
+      <div class="modal-head"><h3>${isNew?'Ajouter a la bibliotheque':'Modifier la fixture'}</h3></div>
+      <div class="modal-body">
+        <div class="field-row">
+          <div class="field"><label>Nom</label><input id="lib-nom" type="text" value="${esc(lib.nom)}" placeholder="ex: PAR LED 18x3W"></div>
+          <div class="field"><label>Marque</label><input id="lib-marque" type="text" value="${esc(lib.marque||'')}" placeholder="ex: Chauvet, ADJ…"></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Type</label><select id="lib-type">${typeOptions}</select></div>
+          <div class="field"><label>Canaux par defaut</label><input id="lib-chdefaut" type="number" min="1" max="512" value="${lib.chDefaut||4}"></div>
+        </div>
+        <div class="field"><label>Note ChamSys</label><input id="lib-chamsys" type="text" value="${esc(lib.noteChamSys||'')}" placeholder="ex: Pan/Tilt 16bit…"></div>
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);margin:12px 0 8px;display:flex;justify-content:space-between;align-items:center">
+          <span>Modes DMX</span>
+          <button class="btn sm primary" onclick="lumAddModeRow()">+ Mode</button>
+        </div>
+        <div id="lib-modes-list">${modesHtml}</div>
+        <div style="background:var(--blue-light);border-radius:var(--radius);padding:10px;margin-top:8px;font-size:12px;color:var(--blue)">
+          Canaux separes par virgule : R,G,B,W,Dim,Stb,Mode,Reset
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn" onclick="closeModal()">Annuler</button>
+        <button class="btn primary" onclick="lumSaveLibFixture(${isNew?'null':lib.id})">Enregistrer</button>
+      </div>
+    </div></div>`;
+}
+
+function lumAddModeRow(){
+  const list=document.getElementById('lib-modes-list');if(!list)return;
+  const i=list.querySelectorAll('[id^=lib-mode]').length;
+  const div=document.createElement('div');
+  div.id=`lib-mode-${i}`;
+  div.style.cssText='background:var(--bg);border-radius:var(--radius);padding:10px;margin-bottom:8px';
+  div.innerHTML=`
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
+      <input placeholder="Nom du mode" id="lm-nom-${i}" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px">
+      <input type="number" placeholder="Nb ch" id="lm-ch-${i}" min="1" max="512" value="4" style="width:72px;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;font-family:'DM Mono',monospace">
+      <button class="btn sm danger" onclick="this.closest('[id^=lib-mode]').remove()">✕</button>
+    </div>
+    <input placeholder="R,G,B,W,Dim,Stb…" id="lm-def-${i}" style="width:100%;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:'DM Mono',monospace">`;
+  list.appendChild(div);
+}
+
+function lumSaveLibFixture(existingId){
+  const nom=(document.getElementById('lib-nom')?.value||'').trim();
+  if(!nom){alert('Entrez un nom.');return;}
+  const modeRows=document.querySelectorAll('#lib-modes-list [id^=lib-mode]');
+  const modes=[];
+  modeRows.forEach((row,i)=>{
+    const mNom=document.getElementById(`lm-nom-${i}`)?.value||`Mode ${i+1}`;
+    const mCh=parseInt(document.getElementById(`lm-ch-${i}`)?.value)||4;
+    const mDef=(document.getElementById(`lm-def-${i}`)?.value||'').split(',').map(s=>s.trim()).filter(Boolean);
+    modes.push({nom:mNom,canaux:mDef.length?mDef:Array.from({length:mCh},(_,k)=>`CH${k+1}`)});
+  });
+  const data={nom,marque:(document.getElementById('lib-marque')?.value||'').trim(),
+    type:document.getElementById('lib-type')?.value||'autre',
+    chDefaut:parseInt(document.getElementById('lib-chdefaut')?.value)||4,
+    noteChamSys:(document.getElementById('lib-chamsys')?.value||'').trim(),
+    modes:modes.length?modes:[{nom:'Default',canaux:[]}],userAdded:true};
+  if(!S.lumLibrary)S.lumLibrary=lumGetLibrary();
+  if(existingId&&existingId!=='null'){
+    const idx=S.lumLibrary.findIndex(l=>l.id===existingId);
+    if(idx>=0)Object.assign(S.lumLibrary[idx],data);
+  }else{
+    S.lumLibrary.push({id:Date.now(),...data});
+  }
+  save();closeModal();lumRenderLibrary();showToast(`${nom} enregistre dans la bibliotheque`);
+}
+
+function lumAddFromLibraryById(libId){
+  const lib=lumGetLibrary().find(l=>l.id===libId);if(!lib)return;
+  const mode=lib.modes?.[0]||{nom:'Default',canaux:[]};
+  const addr=lumNextFreeAddress(1);
+  const typeCol={par:'#F4A01C',lyre:'#185FA5',strobe:'#A32D2D',fog:'#888780',led:'#1D9E75',autre:'#534AB7'};
+  const f={...lumDefaultFixture(),nom:lib.nom,marque:lib.marque||'',type:lib.type,
+    canaux:mode.canaux.length||lib.chDefaut||4,mode:mode.nom,canauxDef:mode.canaux,
+    adresse:addr,noteChamSys:lib.noteChamSys||'',couleur:typeCol[lib.type]||'#1D9E75'};
+  if(!S.fixtures)S.fixtures=[];
+  S.fixtures.push(f);
+  save();
+  // Basculer vers l'onglet Patch
+  document.querySelectorAll('.lum-tab').forEach((b,i)=>{b.classList.toggle('active',i===0);});
+  document.querySelectorAll('.lum-panel').forEach((p,i)=>{p.classList.toggle('active',i===0);});
+  renderLumiere();
+  showToast(`${lib.nom} ajoute au patch — adresse ${addr}`);
+}
+
+
 
 function lumAddFromLibrary(idx){
   const lib=LUM_LIBRARY[idx];
