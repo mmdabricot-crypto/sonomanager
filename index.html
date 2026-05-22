@@ -437,6 +437,7 @@ tbody tr:hover td{background:var(--bg)}
         <button class="btn warn" onclick="savePatch()">💾 Sauvegarder</button>
         <button class="btn" onclick="exportPatchPDF()">⬇ PDF</button>
         <button class="btn blue" onclick="exportConsole()">📤 Exporter console</button>
+        <button class="btn" style="background:#A32D2D;color:#fff;border-color:transparent" onclick="exportWingSnapshot()">🎛 Wing Snapshot</button>
       </div>
       <div class="console-tabs">
         <button class="console-tab active" onclick="setConsole('wing')">Behringer Wing Rack</button>
@@ -1985,6 +1986,200 @@ function exportXR18scn(){
 }
 
 // ── Wing Rack : PDF guide d'import ──
+
+// ══════════════════════════════════════════════════════════
+//  WING RACK — EXPORT SNAPSHOT JSON (importable clé USB)
+//  Format: global/snapshots/ sur la partition DATA de la Wing
+//  Protocole: WING Remote Protocols V3.1 — ae_data / ce_data
+// ══════════════════════════════════════════════════════════
+function exportWingSnapshot(){
+  if(currentConsole!=='wing'){
+    showToast("Selectionnez d'abord la console Wing Rack");
+    setConsole('wing');
+    return;
+  }
+  const chs=patchData['wing']||[];
+  const buses=patchData['wing_buses']||{};
+  const name=getPatchName();
+  const now=new Date();
+
+  // ── Structure snapshot Wing (ae_data) ──
+  // Chaque canal: nom, gain, phantom, fader, mute
+  // Canaux 1-24 = locaux (LCL), 25-32 = AES50-A (SD8)
+
+  const buildChannel=(i)=>{
+    const ch=chs[i]||{};
+    const chNum=i+1;
+    const isAES=chNum>24; // SD8 AES50-A
+    const srcType=isAES?'A':'LCL';
+    const srcNum=isAES?chNum-24:chNum;
+
+    return {
+      // Nom du canal affiché sur la Wing
+      name: ch.name||`CH ${chNum}`,
+      // Source entrée (locale ou AES50-A)
+      src: {
+        type: srcType,
+        num: srcNum,
+        // Gain préampli en dB (-12 à +60)
+        g: parseFloat(ch.gain)||0,
+        // Phantom 48V : 0=off, 1=on
+        vph: ch.phantom?1:0,
+        // Polarité
+        pol: 0,
+      },
+      // Fader à 0dB = 0.75 (valeur normalisée Wing)
+      fdr: 0.75,
+      // Non muté par défaut
+      mute: 0,
+      // Pas d'EQ actif
+      eq: { on: 0 },
+      // Pas de dynamique actif
+      dyn: { on: 0 },
+      // Note dans le champ note
+      note: ch.note||'',
+    };
+  };
+
+  const buildBus=(busNum,dest)=>({
+    name: dest||`AUX ${busNum}`,
+    fdr: 0.75,
+    mute: 0,
+    on: 1,
+  });
+
+  // ── Construire l'objet snapshot complet ──
+  const snapshot = {
+    // En-tête Wing
+    '$wing': {
+      name: name,
+      date: now.toISOString(),
+      version: '3.1',
+      source: 'SonoManager by DABRIKSON',
+    },
+    // Audio Engine Data
+    ae_data: {
+      // Canaux 1-32
+      ch: {},
+      // Entrées locales (1-24)
+      io: {
+        in: {
+          LCL: {},
+          A: {}  // AES50-A (SD8)
+        },
+        out: {}
+      },
+      // Bus AUX (1-8 locaux, 9-16 AES50-A SD8)
+      aux: {},
+      // Main LR
+      main: {
+        st: {
+          name: 'Main LR',
+          fdr: 0.75,
+          mute: 0,
+        }
+      }
+    }
+  };
+
+  // Remplir les 32 canaux
+  for(let i=0;i<32;i++){
+    const chNum=i+1;
+    const ch=chs[i]||{};
+    const isAES=chNum>24;
+    const srcType=isAES?'A':'LCL';
+    const srcNum=isAES?chNum-24:chNum;
+
+    // Canal
+    snapshot.ae_data.ch[chNum]={
+      name: ch.name||`CH ${chNum}`,
+      fdr: 0.75,
+      mute: 0,
+      eq: {on:0},
+      dyn: {on:0},
+    };
+
+    // Source (préampli)
+    const srcObj={
+      name: ch.name||`IN ${srcNum}`,
+      g: parseFloat(ch.gain)||0,
+      vph: ch.phantom?1:0,
+      pol: 0,
+      mute: 0,
+    };
+
+    if(isAES){
+      snapshot.ae_data.io.in.A[srcNum]=srcObj;
+    }else{
+      snapshot.ae_data.io.in.LCL[srcNum]=srcObj;
+    }
+  }
+
+  // Remplir les 16 bus AUX
+  // AUX 1-8 = sorties locales Wing
+  // AUX 9-16 = sorties AES50-A (SD8)
+  for(let b=1;b<=16;b++){
+    const dest=(buses[b]||{}).dest||'';
+    snapshot.ae_data.aux[b]={
+      name: dest||`AUX ${b}`,
+      fdr: 0.75,
+      mute: 0,
+      on: 1,
+    };
+  }
+
+  // ── Générer le JSON formaté ──
+  const json=JSON.stringify(snapshot, null, 2);
+  const blob=new Blob([json],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=name.replace(/\s+/g,'_')+'_wing_snapshot.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+
+  // ── Afficher guide d'import ──
+  const root=document.getElementById('modal-root');
+  root.innerHTML=`<div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+    <div class="modal" style="max-width:520px">
+      <div class="modal-head"><h3>🎛 Snapshot Wing généré !</h3></div>
+      <div class="modal-body">
+        <div style="background:var(--green-light);border-radius:var(--radius);padding:12px;margin-bottom:16px;font-size:13px;color:var(--green-dark)">
+          ✅ Fichier <strong>${name.replace(/\s+/g,'_')}_wing_snapshot.json</strong> téléchargé
+        </div>
+
+        <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);margin-bottom:10px">
+          Comment importer sur la Wing Rack
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:8px">
+          ${[
+            ['1','Sur la Wing : <strong>SETUP → GENERAL → USB MSD ACCESS</strong>','Choisissez <strong>DATA PARTITION</strong>'],
+            ['2','Connectez la Wing à votre PC/tablette via USB','La Wing apparaît comme un disque externe'],
+            ['3','Copiez le fichier JSON dans le dossier','<code>global/snapshots/</code> sur la Wing'],
+            ['4','Déconnectez proprement le disque','<strong>Éjectez</strong> avant de débrancher !'],
+            ['5','Sur la Wing : <strong>SCENES → LOAD SNAPSHOT</strong>','Sélectionnez votre fichier et chargez'],
+          ].map(([n,t,d])=>`
+            <div style="display:flex;gap:10px;padding:10px;background:var(--bg);border-radius:var(--radius)">
+              <div style="width:24px;height:24px;border-radius:50%;background:var(--red);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0">${n}</div>
+              <div><div style="font-size:13px">${t}</div><div style="font-size:11px;color:var(--text2);margin-top:2px">${d}</div></div>
+            </div>`).join('')}
+        </div>
+
+        <div style="background:var(--blue-light);border-radius:var(--radius);padding:10px;margin-top:12px;font-size:12px;color:var(--blue)">
+          <strong>Contenu du snapshot :</strong><br>
+          • ${chs.filter(c=>c&&c.name).length} canaux nommés (${chs.slice(0,24).filter(c=>c&&c.name).length} locaux + ${chs.slice(24).filter(c=>c&&c.name).length} AES50-A/SD8)<br>
+          • ${chs.filter(c=>c&&c.phantom).length} canaux avec phantom 48V activé<br>
+          • ${Object.values(buses).filter(b=>b&&b.dest).length} bus AUX nommés<br>
+          • Faders à 0dB, EQ et dynamiques désactivés par défaut
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn primary" onclick="closeModal()">Compris !</button>
+      </div>
+    </div></div>`;
+}
+
+
 function exportWingGuide(){
   loadJsPDF(()=>{
     const{jsPDF}=window.jspdf;
