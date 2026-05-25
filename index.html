@@ -474,7 +474,7 @@ tbody tr:hover td{background:var(--bg)}
         <button class="lum-tab" onclick="lumShowTab('visu',this)">📊 Visualisation</button>
         <button class="lum-tab" onclick="lumShowTab('scenes',this)">🎨 Scènes lumière</button>
         <button class="lum-tab" onclick="lumShowTab('library',this)">📚 Bibliothèque</button>
-        <button class="lum-tab" onclick="lumShowTab('chamsys',this)">🎛 ChamSys</button>
+        <button class="lum-tab" onclick="lumShowTab('qlc',this)">🎛 ChamSys</button>
         <button class="lum-tab" onclick="lumShowTab('dashboard',this)">📈 Dashboard</button>
       </div>
 
@@ -491,7 +491,7 @@ tbody tr:hover td{background:var(--bg)}
           <button class="btn sm" onclick="lumAutoAddress()">⚡ Auto-adressage</button>
           <button class="btn sm" onclick="lumCheckConflicts()">⚠ Conflits</button>
           <button class="btn" onclick="lumExportPDF()">⬇ PDF</button>
-          <button class="btn warn" onclick="lumExportChamSys()">🎛 ChamSys</button>
+          <button class="btn warn" onclick="lumExportQLC()">🎛 ChamSys</button>
         </div>
         <div class="stats-row" id="lum-stats"></div>
         <div id="lum-patch-grid"></div>
@@ -544,8 +544,8 @@ tbody tr:hover td{background:var(--bg)}
       </div>
 
       <!-- CHAMSYS -->
-      <div class="lum-panel" id="lum-tab-chamsys">
-        <div style="padding:1rem 0" id="lum-chamsys-content"></div>
+      <div class="lum-panel" id="lum-tab-qlc">
+        <div style="padding:1rem 0" id="lum-qlc-content"></div>
       </div>
 
       <!-- DASHBOARD -->
@@ -2590,7 +2590,7 @@ function lumShowTab(tab, btn){
   if(panel)panel.classList.add('active');
   if(tab==='visu')lumRenderVisu();
   if(tab==='scenes')lumRenderScenes();
-  if(tab==='chamsys')lumRenderChamSys();
+  if(tab==='qlc')lumRenderChamSys();
   if(tab==='dashboard')lumRenderDashboard();
 }
 
@@ -2806,8 +2806,8 @@ function lumOpenSceneEditor(id){
             <span id="sc-zoom-val" style="font-family:'DM Mono',monospace;font-size:12px;min-width:36px">${p.zoomVal||127}</span>
           </div>
         </div>
-        <div class="field"><label>Note ChamSys (numéro de preset, groupe…)</label>
-          <input id="sc-chamsys" type="text" value="${esc(sc.noteChamSys||'')}" placeholder="ex: Preset 1, Group 5 > Col > Apply"></div>
+        <div class="field"><label>Note QLC+ (groupe, scène, groupe…)</label>
+          <input id="sc-chamsys" type="text" value="${esc(sc.noteChamSys||'')}" placeholder="ex: Groupe PAR, Scene ambiance"></div>
       </div>
       <div class="modal-foot">
         <button class="btn" onclick="closeModal()">Annuler</button>
@@ -2897,7 +2897,7 @@ function lumExportScenesPDF(){
       doc.setTextColor(30,30,28);
       doc.text(params.join('  ·  '),mg,y+(sc.description?8:0));
       y+=(sc.description?8:0)+6;
-      if(sc.noteChamSys){doc.setTextColor(24,95,165);doc.text(`ChamSys: ${sc.noteChamSys}`,mg,y);y+=6;}
+      if(sc.noteChamSys){doc.setTextColor(24,95,165);doc.text(`QLC+: ${sc.noteChamSys}`,mg,y);y+=6;}
       doc.setDrawColor(220,220,215);doc.line(mg,y,W-mg,y);y+=6;
     });
     doc.save(`scenes_lumiere_${today().replace(/\//g,'-')}.pdf`);
@@ -2992,71 +2992,110 @@ async function loadJSZip(){
   });
 }
 
-// ── Guide ChamSys ──
+// ── Guide QLC+ ──
 function lumRenderChamSys(){
-  const el=document.getElementById('lum-chamsys-content');if(!el)return;
+  lumRenderQLC();
+}
+function lumRenderQLC(){
+  const el=document.getElementById('lum-qlc-content');if(!el)return;
   const fixtures=S.fixtures||[];
+  const palettes=[
+    {nom:'Rouge vif',rgb:[255,0,0]},{nom:'Orange',rgb:[255,128,0]},{nom:'Jaune',rgb:[255,220,0]},
+    {nom:'Vert',rgb:[0,255,0]},{nom:'Cyan',rgb:[0,255,255]},{nom:'Bleu',rgb:[0,0,255]},
+    {nom:'Violet',rgb:[128,0,255]},{nom:'Rose',rgb:[255,0,128]},{nom:'Blanc chaud',rgb:[255,200,120]},
+    {nom:'Blanc froid',rgb:[200,220,255]},{nom:'Blanc pur',rgb:[255,255,255]},{nom:'Amber',rgb:[255,160,0]},
+    {nom:'Magenta',rgb:[255,0,255]},{nom:'Lime',rgb:[128,255,0]},{nom:'Lavande',rgb:[180,100,255]},
+    {nom:'Turquoise',rgb:[0,200,180]},{nom:'Corail',rgb:[255,100,80]},{nom:'Or',rgb:[255,200,50]},
+  ];
   el.innerHTML=`
     <div class="chamsys-section">
-      <div class="chamsys-section-title">📋 Import du patch dans MagicQ</div>
-      <div class="chamsys-tip">Pour importer votre patch généré par SonoManager dans ChamSys MagicQ :</div>
-      <div class="chamsys-cmd" onclick="showToast('Commande copiée !')">Setup → Patch → Import Patch → sélectionnez le fichier CSV exporté</div>
-      <div class="chamsys-tip" style="margin-top:8px">Ou manuellement : Setup → Patch → Add Fixture → saisissez les adresses ci-dessous</div>
+      <div class="chamsys-section-title">📋 Import du patch dans QLC+</div>
+      <div class="chamsys-tip">Deux méthodes pour utiliser votre patch SonoManager dans QLC+ :</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+        <button class="btn primary" onclick="lumExportQLC()">⬇ Export workspace QLC+ (.qxw)</button>
+        <button class="btn blue" onclick="lumExportQXF()">⬇ Export fixture QLC+ (.qxf)</button>
+      </div>
+      <div class="chamsys-tip">
+        <strong>.qxw</strong> — Workspace complet avec toutes les fixtures patchées, prêt à ouvrir dans QLC+<br>
+        <strong>.qxf</strong> — Définition de fixture individuelle, à importer dans la bibliothèque QLC+
+      </div>
     </div>
 
     <div class="chamsys-section">
-      <div class="chamsys-section-title">🎛 Résumé du patch pour MagicQ</div>
+      <div class="chamsys-section-title">🔆 Résumé du patch pour QLC+</div>
       ${fixtures.length?`<div style="font-family:'DM Mono',monospace;font-size:12px;background:#1a1a18;color:#7EE787;padding:1rem;border-radius:var(--radius);overflow-x:auto">
-        ${fixtures.map((f,i)=>`<div style="margin-bottom:4px"><span style="color:#888">${String(i+1).padStart(3,'0')}</span> U<span style="color:#FF9900">${f.univers||1}</span> ADDR <span style="color:#58A6FF">${String(f.adresse).padStart(3,'0')}</span> CH <span style="color:#FF9900">${String(f.canaux||1).padStart(2,'0')}</span> <span style="color:#fff">${esc(f.nom)}</span> <span style="color:#888">${f.marque||''}</span></div>`).join('')}
+        ${fixtures.map((f,i)=>{
+          const groupe=f.groupeAdresse;
+          return`<div style="margin-bottom:4px">
+            <span style="color:#888">${String(i+1).padStart(3,'0')}</span>
+            <span style="color:#FF9900"> U${f.univers||1}</span>
+            <span style="color:#58A6FF"> @${String(f.adresse).padStart(3,'0')}</span>
+            <span style="color:#FF9900"> ${String(f.canaux||1).padStart(2,'0')}ch</span>
+            ${groupe?`<span style="color:#F4A01C"> ×${f.quantite||1}</span>`:''}
+            <span style="color:#fff"> ${esc(f.nom)}</span>
+            <span style="color:#888"> ${f.marque||''}</span>
+            ${groupe?`<span style="color:#F4A01C"> [GROUPE]</span>`:''}
+          </div>`;
+        }).join('')}
       </div>`:`<div class="empty" style="padding:1rem"><p>Aucun appareil dans le patch.</p></div>`}
     </div>
 
     <div class="chamsys-section">
-      <div class="chamsys-section-title">💡 Commandes MagicQ utiles</div>
-      ${[
-        ['Appliquer une couleur à un groupe','Group X > Col > Apply'],
-        ['Enregistrer un preset couleur','Record > Preset X'],
-        ['Créer une cue de scène','Record > Cue X'],
-        ['Activer un effet sur un groupe','Group X > FX > Add FX > Colour'],
-        ['Blackout','Backspace (ou bouton BIG)'],
-        ['Flash un circuit','Set level puis Release'],
-        ['Charger une scène','Playback X > GO'],
-        ['Patch rapide','Setup > Patch > Patch It > saisir fixture et adresse'],
-        ['Test DMX','Setup > Patch > Test'],
-        ['Sauvegarder le show','Setup > Save Show'],
-      ].map(([desc,cmd])=>`
-        <div style="margin-bottom:8px">
-          <div style="font-size:12px;color:var(--text2);margin-bottom:3px">${desc}</div>
-          <div class="chamsys-cmd" onclick="navigator.clipboard?.writeText('${cmd}');showToast('Commande copiée !')">${cmd}</div>
-        </div>`).join('')}
+      <div class="chamsys-section-title">💡 Guide QLC+ — PAR LED en groupe</div>
+      <div class="chamsys-tip">
+        Dans QLC+, les PAR LED sur la <strong>même adresse DMX</strong> sont gérés en ajoutant plusieurs fixtures avec la même adresse.
+        QLC+ les contrôle alors simultanément depuis un seul canal.
+      </div>
+      <div style="background:var(--bg);border-radius:var(--radius);padding:10px;margin-bottom:8px;font-size:12px">
+        <div style="font-weight:600;margin-bottom:6px">PAR LED à adresses consécutives (1 par 1) :</div>
+        ${[
+          'Dans QLC+ : Edit → Add/Edit Fixtures',
+          'Cliquez + → sélectionnez votre fixture PAR LED',
+          "Entrez l'univers et l'adresse de depart",
+          'Champ "Amount" → entrez le nombre de PAR (ex: 6)',
+          'QLC+ crée automatiquement 6 fixtures consécutives',
+        ].map(s=>`<div class="chamsys-cmd">${s}</div>`).join('')}
+      </div>
+      <div style="background:var(--bg);border-radius:var(--radius);padding:10px;font-size:12px">
+        <div style="font-weight:600;margin-bottom:6px">PAR LED sur la même adresse (tous identiques) :</div>
+        ${[
+          "Ajoutez 1 seule fixture a l'adresse souhaitee",
+          'Dans la vue Fixtures, dupliquez-la (Ctrl+C / Ctrl+V)',
+          "Assignez la meme adresse a chaque copie",
+          "Ils recevront tous le meme signal DMX simultanement",
+          'Créez un groupe dans QLC+ pour les sélectionner ensemble',
+        ].map(s=>`<div class="chamsys-cmd">${s}</div>`).join('')}
+      </div>
     </div>
 
     <div class="chamsys-section">
-      <div class="chamsys-section-title">🎨 Palettes de couleurs MagicQ</div>
+      <div class="chamsys-section-title">🎨 Palettes de couleurs RGB</div>
       <div style="display:flex;flex-wrap:wrap;gap:8px">
-        ${LUM_PALETTES.map(p=>`
+        ${palettes.map(p=>`
           <div style="display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer"
-            onclick="navigator.clipboard?.writeText('R${p.rgb[0]} G${p.rgb[1]} B${p.rgb[2]}');showToast('Valeur RGB copiée !')">
+            onclick="navigator.clipboard?.writeText('${p.rgb[0]},${p.rgb[1]},${p.rgb[2]}');showToast('RGB copie !')">
             <div style="width:36px;height:36px;border-radius:8px;background:rgb(${p.rgb[0]},${p.rgb[1]},${p.rgb[2]});box-shadow:0 2px 6px rgba(0,0,0,0.2)"></div>
-            <div style="font-size:10px;color:var(--text2);text-align:center">${p.nom}</div>
+            <div style="font-size:10px;color:var(--text2);text-align:center;max-width:50px">${p.nom}</div>
             <div style="font-size:9px;font-family:'DM Mono',monospace;color:var(--text3)">${p.rgb.join(',')}</div>
           </div>`).join('')}
       </div>
     </div>
 
     <div class="chamsys-section">
-      <div class="chamsys-section-title">📡 Configuration Art-Net dans MagicQ</div>
-      <div class="chamsys-tip">Pour utiliser une interface Art-Net tierce avec MagicQ :</div>
+      <div class="chamsys-section-title">📡 Configuration Art-Net dans QLC+</div>
+      <div class="chamsys-tip">Pour utiliser votre interface Art-Net avec QLC+ :</div>
       ${[
-        'Setup → Network → saisir l\'IP de votre interface Art-Net',
-        'Setup → DMX I/O → Output Type = Art-Net',
-        'Assigner l\'univers Art-Net à l\'univers MagicQ',
-        'Enable → Output : activer la sortie',
-        'Tester avec Setup → Patch → Test → observer sur la console',
-      ].map((step,i)=>`<div class="chamsys-cmd">${i+1}. ${step}</div>`).join('')}
-    </div>
-  `;
+        'Ouvrez QLC+ → menu Inputs/Outputs',
+        'Dans la colonne Outputs → cherchez "ArtNet" ou "E1.31 sACN"',
+        "Cliquez sur le plugin Art-Net - Configurez l'IP de votre interface",
+        'Cochez la case "Enable" pour activer la sortie',
+        "Assignez l'univers QLC+ a l'univers Art-Net correspondant",
+        'Testez avec le channel monitor (View → Channel Monitor)',
+      ].map((s,i)=>`<div class="chamsys-cmd">${i+1}. ${s}</div>`).join('')}
+    </div>`;
 }
+
+
 
 // ── Dashboard éclairage ──
 function lumRenderDashboard(){
@@ -3224,7 +3263,8 @@ function lumRenderPatch(rigId){
           </div>
           <div class="lum-meta">${f.canaux} canaux${f.mode?' — '+esc(f.mode):''}</div>
           <div class="lum-meta" style="color:var(--green-dark)">
-            Ch. ${f.adresse} → ${f.adresse+(f.canaux||1)*(f.quantite||1)-1}
+            Ch. ${f.adresse} → ${f.groupeAdresse?f.adresse+(f.canaux||1)-1:f.adresse+(f.canaux||1)*(f.quantite||1)-1}
+            ${f.groupeAdresse?`<span class="badge" style="background:var(--amber-light);color:var(--amber-dark);font-size:10px;margin-left:4px">×${f.quantite||1} même adresse</span>`:''}
           </div>
           ${f.canauxDef&&f.canauxDef.length?`<div class="lum-channels">
             ${f.canauxDef.map((c,i)=>`<span class="lum-ch" style="background:var(--bg);color:var(--text2)">${f.adresse+i}:${c}</span>`).join('')}
@@ -3425,7 +3465,11 @@ function lumNextFreeAddress(univers){
   const fixtures=(S.fixtures||[]).filter(f=>(f.univers||1)===univers).sort((a,b)=>a.adresse-b.adresse);
   let addr=1;
   fixtures.forEach(f=>{
-    if(f.adresse<=addr)addr=Math.max(addr,f.adresse+(f.canaux||1)*(f.quantite||1));
+    if(f.adresse<=addr){
+      // Si groupe sur même adresse, n'occupe que canaux*1 (pas *quantite)
+      const chUsed=f.groupeAdresse?(f.canaux||1):(f.canaux||1)*(f.quantite||1);
+      addr=Math.max(addr,f.adresse+chUsed);
+    }
   });
   return Math.min(addr,513);
 }
@@ -3498,13 +3542,22 @@ function lumOpenEditor(fixture){
           <div class="field"><label>Quantité</label><input id="lf-quantite" type="number" min="1" value="${f.quantite||1}"></div>
           <div class="field"><label>Couleur d'identification</label><input id="lf-couleur" type="color" value="${f.couleur||'#F4A01C'}" style="height:38px;padding:2px"></div>
         </div>
+        <div style="background:var(--amber-light);border-radius:var(--radius);padding:10px;margin-bottom:10px">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--amber-dark)">
+            <input type="checkbox" id="lf-groupe" ${f.groupeAdresse?'checked':''} style="accent-color:var(--amber)">
+            <div>
+              <strong>Groupe sur même adresse DMX</strong>
+              <div style="font-size:11px;font-weight:400;margin-top:2px">Toutes les unités reçoivent le même signal DMX (même adresse pour toutes)</div>
+            </div>
+          </label>
+        </div>
         <div class="field"><label>Définition des canaux (séparés par virgule)</label>
           <input id="lf-chdef" type="text" value="${(f.canauxDef||[]).join(',')}" placeholder="ex: R,G,B,W,Dim"></div>
         <div class="field-row">
           <div class="field"><label>Position sur scène</label><input id="lf-position" type="text" value="${esc(f.position||'')}" placeholder="ex: Jardin, Centre…"></div>
           <div class="field"><label>Rig</label><select id="lf-rig">${rigOptions}</select></div>
         </div>
-        <div class="field"><label>Note ChamSys / Programmation</label>
+        <div class="field"><label>Note QLC+ / Programmation</label>
           <textarea id="lf-note" rows="2" placeholder="Notes de programmation, particularités…">${esc(f.noteChamSys||f.note||'')}</textarea></div>
       </div>
       <div class="modal-foot">
@@ -3536,6 +3589,7 @@ function lumSaveFixture(existingId){
     adresse:parseInt(document.getElementById('lf-adresse').value)||1,
     canaux:parseInt(document.getElementById('lf-canaux').value)||4,
     quantite:parseInt(document.getElementById('lf-quantite').value)||1,
+    groupeAdresse:document.getElementById('lf-groupe')?.checked||false,
     couleur:document.getElementById('lf-couleur').value,
     canauxDef:(document.getElementById('lf-chdef').value||'').split(',').map(s=>s.trim()).filter(Boolean),
     position:(document.getElementById('lf-position').value||'').trim(),
@@ -3642,28 +3696,163 @@ function lumExportPDF(){
 }
 
 // ── Export ChamSys MagicQ ──
-function lumExportChamSys(){
-  const fixtures=(S.fixtures||[]).sort((a,b)=>(a.univers||1)-(b.univers||1)||a.adresse-b.adresse);
-  if(!fixtures.length){showToast('⚠ Aucun appareil à exporter');return;}
-  let csv="Fixture,Manufacturer,Short Name,Mode,Universe,DMX Address,Quantity,Notes\n";
-  fixtures.forEach(f=>{
-    csv+=`"${f.nom||''}", "${f.marque||''}", "${(f.nom||'').slice(0,8)}", "${f.mode||''}", ${f.univers||1}, ${f.adresse}, ${f.quantite||1}, "${f.noteChamSys||''}"\n`;
-  });
-  // Aussi générer un fichier texte de patch pour ChamSys
-  let patch="// Export SonoManager vers ChamSys MagicQ\n// Importez via : Setup > Patch > Import Patch\n\n";
-  fixtures.forEach((f,i)=>{
-    for(let q=0;q<(f.quantite||1);q++){
-      const addr=f.adresse+q*(f.canaux||1);
-      patch+=`${String(i+1+q).padStart(3,"0")},${f.univers||1},${String(addr).padStart(3,"0")},${f.canaux||1},"${f.nom}","${f.marque}"\n`;
+function lumExportChamSys(){lumExportQLC();}
+
+function lumExportQLC(){
+  // Export workspace QLC+ complet (.qxw)
+  const fixtures=S.fixtures||[];
+  if(!fixtures.length){showToast('Aucun appareil a exporter');return;}
+
+  const fixtureDefs=[];
+  const fixtureInstances=[];
+  let fxId=1;
+
+  fixtures.forEach((f,idx)=>{
+    const mode=f.mode||'Default';
+    const canaux=f.canauxDef&&f.canauxDef.length?f.canauxDef:
+      Array.from({length:f.canaux||1},(_,k)=>`CH${k+1}`);
+    const qte=f.quantite||1;
+    const memeAdresse=f.groupeAdresse; // tous sur la même adresse
+
+    // Definition fixture XML
+    const chanXML=canaux.map((ch,i)=>`
+      <Channel Number="${i}">
+        <Name>${ch}</Name>
+        <Group Byte="0">Colour</Group>
+      </Channel>`).join('');
+
+    fixtureDefs.push(`
+  <FixtureDefinition>
+    <Creator><Name>SonoManager</Name><Version>1.0</Version><Author>DABRIKSON</Author></Creator>
+    <Manufacturer>${f.marque||'Generique'}</Manufacturer>
+    <Model>${f.nom}</Model>
+    <Type>${{par:'Color Changer',lyre:'Scanner',strobe:'Strobe',fog:'Hazer',led:'Color Changer',autre:'Dimmer'}[f.type]||'Color Changer'}</Type>
+    <Channel Number="0">${chanXML}
+    </Channel>
+    <Mode Name="${mode}">
+      ${canaux.map((ch,i)=>`<Channel Number="${i}">${ch}</Channel>`).join('')}
+    </Mode>
+  </FixtureDefinition>`);
+
+    // Instances (une par unite)
+    for(let q=0;q<qte;q++){
+      const addr=memeAdresse?f.adresse:f.adresse+q*f.canaux;
+      fixtureInstances.push(`
+  <Fixture>
+    <Manufacturer>${f.marque||'Generique'}</Manufacturer>
+    <Model>${f.nom}</Model>
+    <Mode>${mode}</Mode>
+    <ID>${fxId++}</ID>
+    <Name>${f.nom}${qte>1&&!memeAdresse?' '+(q+1):''}</Name>
+    <Universe>${(f.univers||1)-1}</Universe>
+    <Address>${addr-1}</Address>
+    <Channels>${f.canaux||1}</Channels>
+    <ExcludeFadeChannels/>
+  </Fixture>`);
     }
   });
-  const blob=new Blob([patch],{type:'text/plain'});
+
+  const xml=`<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Workspace>
+<Workspace xmlns="http://www.qlcplus.org/Workspace" CurrentWindow="FixtureManager">
+  <Creator>
+    <Name>SonoManager by DABRIKSON</Name>
+    <Version>4.13.0</Version>
+    <Author>DABRIKSON</Author>
+  </Creator>
+  <Engine>
+    <InputOutputMap>
+      <Universe Name="Univers 1" ID="0">
+        <Output Plugin="ArtNet" Line="0" UID="artnet-out"/>
+      </Universe>
+      <Universe Name="Univers 2" ID="1">
+        <Output Plugin="ArtNet" Line="1" UID="artnet-out-2"/>
+      </Universe>
+    </InputOutputMap>
+    <Fixtures>${fixtureInstances.join('')}
+    </Fixtures>
+    <Functions/>
+    <ChannelsGroups/>
+    <InputProfiles/>
+  </Engine>
+</Workspace>`;
+
+  const blob=new Blob([xml],{type:'application/xml'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
-  a.download=`chamsys_patch_${today().replace(/\//g,'-')}.csv`;
+  a.download='sonomanager_patch.qxw';
   a.click();URL.revokeObjectURL(a.href);
-  showToast('✅ Export ChamSys généré — importez via Setup > Patch > Import');
+  showToast('Workspace QLC+ exporte — ouvrez le dans QLC+');
 }
+
+function lumExportQXF(){
+  // Export fixture individuelle QLC+ (.qxf) — pour la bibliothèque QLC+
+  const fixtures=S.fixtures||[];
+  if(!fixtures.length){showToast('Aucun appareil a exporter');return;}
+
+  // Modal pour choisir quelle fixture exporter
+  const root=document.getElementById('modal-root');
+  root.innerHTML=`<div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+    <div class="modal" style="max-width:420px">
+      <div class="modal-head"><h3>Export fixture QLC+ (.qxf)</h3></div>
+      <div class="modal-body">
+        <div class="field"><label>Choisir la fixture</label>
+          <select id="qxf-fixture" style="width:100%;padding:8px 11px;border:1.5px solid var(--border);border-radius:8px;font-size:13px">
+            ${fixtures.map((f,i)=>`<option value="${i}">${esc(f.nom)} — ${f.canaux}ch</option>`).join('')}
+          </select>
+        </div>
+        <div style="font-size:12px;color:var(--text2);margin-top:8px">
+          Le fichier .qxf sera importé dans QLC+ via :<br>
+          <strong>Edit → Add/Edit Fixtures → Importer depuis fichier</strong>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn" onclick="closeModal()">Annuler</button>
+        <button class="btn primary" onclick="doExportQXF(parseInt(document.getElementById('qxf-fixture').value))">⬇ Exporter .qxf</button>
+      </div>
+    </div></div>`;
+}
+
+function doExportQXF(idx){
+  const f=(S.fixtures||[])[idx];if(!f)return;
+  const canaux=f.canauxDef&&f.canauxDef.length?f.canauxDef:
+    Array.from({length:f.canaux||1},(_,k)=>`CH${k+1}`);
+  const typeMap={par:'Color Changer',lyre:'Scanner',strobe:'Strobe',fog:'Hazer',led:'Color Changer',autre:'Dimmer'};
+
+  const chanDefs=canaux.map((ch,i)=>`
+    <Channel Number="${i}">
+      <Name>${ch}</Name>
+      <Group Byte="0">${ch==='R'||ch==='G'||ch==='B'||ch==='W'||ch==='A'?'Colour':ch==='Pan'||ch==='Tilt'?'Pan'||'Tilt':'Intensity'}</Group>
+      <Capability Min="0" Max="255">${ch}</Capability>
+    </Channel>`).join('');
+
+  const xml=`<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE FixtureDefinition>
+<FixtureDefinition xmlns="http://www.qlcplus.org/FixtureDefinition">
+  <Creator>
+    <Name>SonoManager by DABRIKSON</Name>
+    <Version>4.13.0</Version>
+    <Author>DABRIKSON</Author>
+  </Creator>
+  <Manufacturer>${f.marque||'Generique'}</Manufacturer>
+  <Model>${f.nom}</Model>
+  <Type>${typeMap[f.type]||'Color Changer'}</Type>
+  ${chanDefs}
+  <Mode Name="${f.mode||'Default'}">
+    ${canaux.map((ch,i)=>`<Channel Number="${i}">${ch}</Channel>`).join('')}
+  </Mode>
+</FixtureDefinition>`;
+
+  const blob=new Blob([xml],{type:'application/xml'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=f.nom.replace(/\s+/g,'_')+'.qxf';
+  a.click();URL.revokeObjectURL(a.href);
+  closeModal();
+  showToast(`Fixture ${f.nom} exportee en .qxf`);
+}
+
+
 
 
 // ═══ CHECKLIST ═══
