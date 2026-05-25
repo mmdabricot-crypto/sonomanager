@@ -3734,82 +3734,72 @@ function lumExportPDF(){
 function lumExportChamSys(){lumExportQLC();}
 
 function lumExportQLC(){
-  // Export workspace QLC+ complet (.qxw)
   const fixtures=S.fixtures||[];
   if(!fixtures.length){showToast('Aucun appareil a exporter');return;}
 
-  const fixtureDefs=[];
-  const fixtureInstances=[];
+  // QLC+ v4 workspace format correct
+  // Les fixtures sont référencées par Manufacturer + Model
+  // L'adresse est 0-based, l'univers est 0-based
   let fxId=1;
+  const fixtureInstances=[];
+  const fixtureGroups=[];
 
   fixtures.forEach((f,idx)=>{
-    const mode=f.mode||'Default';
-    const canaux=f.canauxDef&&f.canauxDef.length?f.canauxDef:
-      Array.from({length:f.canaux||1},(_,k)=>`CH${k+1}`);
     const qte=f.quantite||1;
-    const memeAdresse=f.groupeAdresse; // tous sur la même adresse
+    const memeAdresse=f.groupeAdresse;
+    const manufacturer=f.marque||'Generic';
+    const model=f.nom;
+    const mode=f.mode||'Default';
 
-    // Definition fixture XML
-    const chanXML=canaux.map((ch,i)=>`
-      <Channel Number="${i}">
-        <Name>${ch}</Name>
-        <Group Byte="0">Colour</Group>
-      </Channel>`).join('');
-
-    fixtureDefs.push(`
-  <FixtureDefinition>
-    <Creator><Name>SonoManager</Name><Version>1.0</Version><Author>DABRIKSON</Author></Creator>
-    <Manufacturer>${f.marque||'Generique'}</Manufacturer>
-    <Model>${f.nom}</Model>
-    <Type>${{par:'Color Changer',lyre:'Scanner',strobe:'Strobe',fog:'Hazer',led:'Color Changer',autre:'Dimmer'}[f.type]||'Color Changer'}</Type>
-    <Channel Number="0">${chanXML}
-    </Channel>
-    <Mode Name="${mode}">
-      ${canaux.map((ch,i)=>`<Channel Number="${i}">${ch}</Channel>`).join('')}
-    </Mode>
-  </FixtureDefinition>`);
-
-    // Instances (une par unite)
     for(let q=0;q<qte;q++){
-      const addr=memeAdresse?f.adresse:f.adresse+q*f.canaux;
-      fixtureInstances.push(`
-  <Fixture>
-    <Manufacturer>${f.marque||'Generique'}</Manufacturer>
-    <Model>${f.nom}</Model>
-    <Mode>${mode}</Mode>
-    <ID>${fxId++}</ID>
-    <Name>${f.nom}${qte>1&&!memeAdresse?' '+(q+1):''}</Name>
-    <Universe>${(f.univers||1)-1}</Universe>
-    <Address>${addr-1}</Address>
-    <Channels>${f.canaux||1}</Channels>
-    <ExcludeFadeChannels/>
-  </Fixture>`);
+      const addr=memeAdresse?f.adresse:f.adresse+q*(f.canaux||1);
+      fixtureInstances.push(
+`  <Fixture>
+   <Manufacturer>${escXML(manufacturer)}</Manufacturer>
+   <Model>${escXML(model)}</Model>
+   <Mode>${escXML(mode)}</Mode>
+   <ID>${fxId}</ID>
+   <Name>${escXML(f.nom+(qte>1&&!memeAdresse?' '+(q+1):''))}</Name>
+   <Universe>${(f.univers||1)-1}</Universe>
+   <Address>${addr-1}</Address>
+   <Channels>${f.canaux||1}</Channels>
+   <ExcludeFadeChannels/>
+  </Fixture>`
+      );
+      fxId++;
     }
   });
 
-  const xml=`<?xml version="1.0" encoding="UTF-8"?>
+  // Grouper par univers pour InputOutputMap
+  const univers=[...new Set(fixtures.map(f=>f.univers||1))].sort((a,b)=>a-b);
+  const universeMap=univers.map(u=>
+`  <Universe Name="Universe ${u}" ID="${u-1}">
+   <Output Plugin="ArtNet" Line="${u-1}" UID="artnet-out-${u}"/>
+  </Universe>`
+  ).join('\n');
+
+  const xml=
+`<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE Workspace>
 <Workspace xmlns="http://www.qlcplus.org/Workspace" CurrentWindow="FixtureManager">
-  <Creator>
-    <Name>SonoManager by DABRIKSON</Name>
-    <Version>4.13.0</Version>
-    <Author>DABRIKSON</Author>
-  </Creator>
-  <Engine>
-    <InputOutputMap>
-      <Universe Name="Univers 1" ID="0">
-        <Output Plugin="ArtNet" Line="0" UID="artnet-out"/>
-      </Universe>
-      <Universe Name="Univers 2" ID="1">
-        <Output Plugin="ArtNet" Line="1" UID="artnet-out-2"/>
-      </Universe>
-    </InputOutputMap>
-    <Fixtures>${fixtureInstances.join('')}
-    </Fixtures>
-    <Functions/>
-    <ChannelsGroups/>
-    <InputProfiles/>
-  </Engine>
+ <Creator>
+  <Name>Q Light Controller Plus</Name>
+  <Version>4.13.0</Version>
+  <Author>SonoManager DABRIKSON</Author>
+ </Creator>
+ <Engine>
+  <InputOutputMap>
+${universeMap}
+  </InputOutputMap>
+  <Fixtures>
+${fixtureInstances.join('\n')}
+  </Fixtures>
+  <ChannelsGroups/>
+  <Functions/>
+  <InputProfiles/>
+  <MonitorProperties/>
+  <VideoProvider/>
+ </Engine>
 </Workspace>`;
 
   const blob=new Blob([xml],{type:'application/xml'});
@@ -3817,7 +3807,97 @@ function lumExportQLC(){
   a.href=URL.createObjectURL(blob);
   a.download='sonomanager_patch.qxw';
   a.click();URL.revokeObjectURL(a.href);
-  showToast('Workspace QLC+ exporte — ouvrez le dans QLC+');
+
+  // Afficher guide d'import
+  const root=document.getElementById('modal-root');
+  root.innerHTML=`<div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+    <div class="modal" style="max-width:500px">
+      <div class="modal-head"><h3>💡 Workspace QLC+ exporté</h3></div>
+      <div class="modal-body">
+        <div style="background:var(--green-light);border-radius:var(--radius);padding:10px;margin-bottom:14px;font-size:13px;color:var(--green-dark)">
+          ✅ <strong>sonomanager_patch.qxw</strong> téléchargé — ${fxId-1} fixture(s)
+        </div>
+
+        <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);margin-bottom:8px">
+          Comment importer dans QLC+
+        </div>
+        ${[
+          ['1','Importez d\'abord vos fixtures QLC+ (.qxf)','QLC+ doit connaître chaque appareil avant de charger le workspace'],
+          ['2','Ouvrez QLC+ → File → Open','Sélectionnez le fichier <strong>sonomanager_patch.qxw</strong>'],
+          ['3','Vérifiez le patch dans l\'onglet Fixtures','Chaque fixture doit apparaître avec la bonne adresse'],
+          ['4','Configurez Art-Net dans Inputs/Outputs','Activez la sortie Art-Net sur le bon univers'],
+        ].map(([n,t,d])=>`
+          <div style="display:flex;gap:10px;padding:10px;background:var(--bg);border-radius:var(--radius);margin-bottom:6px">
+            <div style="width:22px;height:22px;border-radius:50%;background:var(--green);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">${n}</div>
+            <div><div style="font-size:13px;font-weight:500">${t}</div><div style="font-size:11px;color:var(--text2);margin-top:2px">${d}</div></div>
+          </div>`).join('')}
+
+        <div style="background:var(--amber-light);border-radius:var(--radius);padding:10px;margin-top:8px;font-size:12px;color:var(--amber-dark)">
+          ⚠️ <strong>Important :</strong> Si QLC+ affiche "Fixture not found", exportez d'abord les <strong>.qxf</strong> de chaque appareil et importez-les dans QLC+ via <em>Edit → Add/Edit Fixtures → Import</em>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn" onclick="lumExportAllQXF();closeModal()">⬇ Exporter tous les .qxf</button>
+        <button class="btn primary" onclick="closeModal()">Compris !</button>
+      </div>
+    </div></div>`;
+}
+
+function escXML(s){
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function lumExportAllQXF(){
+  // Exporter toutes les fixtures en .qxf dans un ZIP
+  const fixtures=S.fixtures||[];
+  if(!fixtures.length){showToast('Aucun appareil');return;}
+
+  // Exporter chaque fixture une par une (le navigateur va les télécharger)
+  const done=new Set();
+  fixtures.forEach(f=>{
+    const key=`${f.marque||'Generic'}_${f.nom}`;
+    if(done.has(key))return; // éviter les doublons
+    done.add(key);
+    const canaux=f.canauxDef&&f.canauxDef.length?f.canauxDef:
+      Array.from({length:f.canaux||1},(_,k)=>`CH${k+1}`);
+    const typeMap={par:'Color Changer',lyre:'Moving Head',strobe:'Strobe',fog:'Hazer',led:'Color Changer',autre:'Dimmer'};
+    const groupMap={R:'Colour',G:'Colour',B:'Colour',W:'Colour',A:'Colour',Pan:'Pan',Tilt:'Tilt',Dim:'Intensity',Dimmer:'Intensity',Stb:'Shutter',Shutter:'Shutter',Gobo:'Gobo',Zoom:'Beam',Mode:'Maintenance',Reset:'Maintenance'};
+
+    const chanDefs=canaux.map((ch,i)=>`
+   <Channel Name="${escXML(ch)}">
+    <Group Byte="0">${groupMap[ch]||'Colour'}</Group>
+    <Capability Min="0" Max="255">${escXML(ch)}</Capability>
+   </Channel>`).join('');
+
+    const chanRefs=canaux.map((ch,i)=>`
+    <Channel Number="${i}">${escXML(ch)}</Channel>`).join('');
+
+    const qxf=`<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE FixtureDefinition>
+<FixtureDefinition xmlns="http://www.qlcplus.org/FixtureDefinition">
+ <Creator>
+  <Name>Q Light Controller Plus</Name>
+  <Version>4.13.0</Version>
+  <Author>SonoManager DABRIKSON</Author>
+ </Creator>
+ <Manufacturer>${escXML(f.marque||'Generic')}</Manufacturer>
+ <Model>${escXML(f.nom)}</Model>
+ <Type>${typeMap[f.type]||'Color Changer'}</Type>
+${chanDefs}
+ <Mode Name="${escXML(f.mode||'Default')}">
+${chanRefs}
+ </Mode>
+</FixtureDefinition>`;
+
+    setTimeout(()=>{
+      const blob=new Blob([qxf],{type:'application/xml'});
+      const a=document.createElement('a');
+      a.href=URL.createObjectURL(blob);
+      a.download=`${(f.nom).replace(/\s+/g,'_')}.qxf`;
+      a.click();URL.revokeObjectURL(a.href);
+    }, done.size*300); // délai pour éviter que le navigateur bloque
+  });
+  showToast(`${done.size} fichiers .qxf exportes`);
 }
 
 function lumExportQXF(){
