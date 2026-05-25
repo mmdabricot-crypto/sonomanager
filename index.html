@@ -2949,7 +2949,7 @@ function lumImportQLC(){
   input.type='file';input.accept='.qxf,.xml';
   input.onchange=async e=>{
     const file=e.target.files[0];if(!file)return;
-    showToast('📂 Lecture du fichier QLC+…');
+    showToast('Lecture du fichier QLC+…');
     const reader=new FileReader();
     reader.onload=ev=>{
       try{
@@ -2957,24 +2957,51 @@ function lumImportQLC(){
         const xml=parser.parseFromString(ev.target.result,'text/xml');
         const nom=xml.querySelector('FixtureDefinition > Model')?.textContent||file.name.replace('.qxf','');
         const marque=xml.querySelector('FixtureDefinition > Manufacturer')?.textContent||'';
-        const modes=[...xml.querySelectorAll('Mode')].map(m=>({
-          nom:m.getAttribute('Name')||'Default',
-          canaux:[...m.querySelectorAll('Channel')].map((ch,i)=>{
-            const ref=ch.getAttribute('Number');
-            const chanDef=xml.querySelector(`Channel[Name="${ref}"]`)||xml.querySelectorAll('Channel')[i];
-            return chanDef?.getAttribute('Name')||`CH${i+1}`;
-          }),
-        }));
-        const mode=modes[0]||{nom:'Default',canaux:[]};
-        const typeMap={'Colour':'par','Moving Head':'lyre','Strobe':'strobe','Hazer':'fog','LED Bar':'led'};
         const typeEl=xml.querySelector('FixtureDefinition > Type');
+        const typeMap={'Colour':'par','Color Changer':'par','Moving Head':'lyre','Scanner':'lyre',
+          'Strobe':'strobe','Hazer':'fog','Smoke':'fog','LED Bar':'led','LED Wash':'par'};
         const type=typeMap[typeEl?.textContent]||'autre';
-        const f={...lumDefaultFixture(),nom,marque,type,mode:mode.nom,canaux:mode.canaux.length||4,canauxDef:mode.canaux,adresse:lumNextFreeAddress(1)};
-        if(!S.fixtures)S.fixtures=[];
-        S.fixtures.push(f);
-        save();renderLumiere();
-        showToast(`✅ QLC+ importé : ${nom} (${mode.canaux.length} canaux)`);
-      }catch(err){showToast('❌ Erreur lecture QLC+ : '+err.message);console.error(err);}
+
+        // Parser les définitions de canaux globaux (par name)
+        const allChanDefs={};
+        [...xml.querySelectorAll('FixtureDefinition > Channel')].forEach(ch=>{
+          const name=ch.getAttribute('Name');
+          if(name) allChanDefs[name]=name;
+        });
+
+        // Parser les modes — chaque mode liste ses canaux dans l'ordre
+        const modes=[...xml.querySelectorAll('Mode')].map(m=>{
+          const modeName=m.getAttribute('Name')||'Default';
+          // Dans un Mode QLC+, les Channel sont listés avec Number et le nom correspond
+          // à un Channel global défini dans FixtureDefinition
+          const modeChannels=[...m.querySelectorAll('Channel')].map(ch=>{
+            const num=parseInt(ch.getAttribute('Number'));
+            const chanName=ch.textContent?.trim()||ch.getAttribute('Name')||`CH${num+1}`;
+            return chanName;
+          }).filter(Boolean);
+          return{nom:modeName, canaux:modeChannels};
+        });
+
+        const mode=modes[0]||{nom:'Default',canaux:[]};
+        // chDefaut = nombre de canaux du premier mode
+        const chDefaut=mode.canaux.length||4;
+
+        // Ajouter à la bibliothèque (pas directement au patch)
+        if(!S.lumLibrary)S.lumLibrary=lumGetLibrary();
+        S.lumLibrary.push({
+          id:Date.now(),
+          nom,marque,type,
+          chDefaut,
+          modes,
+          noteChamSys:'',
+          userAdded:true,
+        });
+        save();
+        // Basculer sur l'onglet bibliothèque pour voir le résultat
+        lumShowTab('library', document.querySelectorAll('.lum-tab')[3]);
+        lumRenderLibrary();
+        showToast(`QLC+ importe : ${nom} (${chDefaut} canaux) — visible dans la bibliotheque`);
+      }catch(err){showToast('Erreur lecture QLC+ : '+err.message);console.error(err);}
     };
     reader.readAsText(file);
   };
@@ -3428,17 +3455,23 @@ function lumAddFromLibraryById(libId){
   const mode=lib.modes?.[0]||{nom:'Default',canaux:[]};
   const addr=lumNextFreeAddress(1);
   const typeCol={par:'#F4A01C',lyre:'#185FA5',strobe:'#A32D2D',fog:'#888780',led:'#1D9E75',autre:'#534AB7'};
-  const f={...lumDefaultFixture(),nom:lib.nom,marque:lib.marque||'',type:lib.type,
-    canaux:mode.canaux.length||lib.chDefaut||4,mode:mode.nom,canauxDef:mode.canaux,
-    adresse:addr,noteChamSys:lib.noteChamSys||'',couleur:typeCol[lib.type]||'#1D9E75'};
+  // Priorité : chDefaut > mode.canaux.length > 4
+  const nbCanaux=lib.chDefaut||(mode.canaux.length>0?mode.canaux.length:4);
+  // Tronquer canauxDef au bon nombre de canaux
+  const canauxDef=(mode.canaux||[]).slice(0,nbCanaux);
+  const f={...lumDefaultFixture(),
+    nom:lib.nom,marque:lib.marque||'',type:lib.type,
+    canaux:nbCanaux,mode:mode.nom,canauxDef,
+    adresse:addr,noteChamSys:lib.noteChamSys||'',
+    couleur:typeCol[lib.type]||'#1D9E75'
+  };
   if(!S.fixtures)S.fixtures=[];
   S.fixtures.push(f);
   save();
-  // Basculer vers l'onglet Patch
   document.querySelectorAll('.lum-tab').forEach((b,i)=>{b.classList.toggle('active',i===0);});
   document.querySelectorAll('.lum-panel').forEach((p,i)=>{p.classList.toggle('active',i===0);});
   renderLumiere();
-  showToast(`${lib.nom} ajoute au patch — adresse ${addr}`);
+  showToast(`${lib.nom} ajoute au patch — adresse ${addr} — ${nbCanaux} canaux`);
 }
 
 
