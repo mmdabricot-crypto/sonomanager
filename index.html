@@ -474,7 +474,7 @@ tbody tr:hover td{background:var(--bg)}
         <button class="lum-tab" onclick="lumShowTab('visu',this)">📊 Visualisation</button>
         <button class="lum-tab" onclick="lumShowTab('scenes',this)">🎨 Scènes lumière</button>
         <button class="lum-tab" onclick="lumShowTab('library',this)">📚 Bibliothèque</button>
-        <button class="lum-tab" onclick="lumShowTab('qlc',this)">🎛 ChamSys</button>
+        <button class="lum-tab" onclick="lumShowTab('qlc',this)">💡 QLC+</button>
         <button class="lum-tab" onclick="lumShowTab('dashboard',this)">📈 Dashboard</button>
       </div>
 
@@ -491,7 +491,7 @@ tbody tr:hover td{background:var(--bg)}
           <button class="btn sm" onclick="lumAutoAddress()">⚡ Auto-adressage</button>
           <button class="btn sm" onclick="lumCheckConflicts()">⚠ Conflits</button>
           <button class="btn" onclick="lumExportPDF()">⬇ PDF</button>
-          <button class="btn warn" onclick="lumExportQLC()">🎛 ChamSys</button>
+          <button class="btn warn" onclick="lumExportQLC()">💡 Export QLC+</button>
         </div>
         <div class="stats-row" id="lum-stats"></div>
         <div id="lum-patch-grid"></div>
@@ -3513,7 +3513,7 @@ function lumOpenEditor(fixture){
   const f=fixture||lumDefaultFixture();
   const typeOptions=['par','lyre','strobe','fog','led','autre'].map(t=>`<option value="${t}" ${f.type===t?'selected':''}>${{par:'PAR LED',lyre:'Lyre',strobe:'Stroboscope',fog:'Fog/Haze',led:'LED Bar',autre:'Autre'}[t]}</option>`).join('');
   const rigOptions=`<option value="">Sans rig</option>`+(S.rigs||[]).map(r=>`<option value="${r.id}" ${f.rigId==r.id?'selected':''}>${esc(r.nom)}</option>`).join('');
-  const libOptions=LUM_LIBRARY.map((l,i)=>`<option value="${i}">${esc(l.nom)} (${l.modes.map(m=>m.nom).join('/')})</option>`).join('');
+  const libOptions=lumGetLibrary().map((l,i)=>`<option value="${l.id}">${esc(l.nom)} — ${esc(l.marque||'Generique')} (${(l.modes||[]).map(m=>m.nom).join('/')||l.chDefaut+'ch'})</option>`).join('');
 
   const root=document.getElementById('modal-root');
   root.innerHTML=`<div class="modal-overlay" onclick="if(event.target===this)closeModal()">
@@ -3568,15 +3568,17 @@ function lumOpenEditor(fixture){
 }
 
 function lumEditorLoadLib(){
-  const idx=parseInt(document.getElementById('lf-lib').value);
-  const lib=LUM_LIBRARY[idx];if(!lib)return;
-  document.getElementById('lf-nom').value=lib.nom;
-  document.getElementById('lf-marque').value=lib.marque;
-  document.getElementById('lf-type').value=lib.type;
-  document.getElementById('lf-canaux').value=lib.chDefaut;
-  document.getElementById('lf-mode').value=lib.modes[0].nom;
-  document.getElementById('lf-chdef').value=lib.modes[0].canaux.join(',');
-  showToast(`✅ ${lib.nom} chargé`);
+  const libId=parseInt(document.getElementById('lf-lib').value);
+  const lib=lumGetLibrary().find(l=>l.id===libId);
+  if(!lib)return;
+  document.getElementById('lf-nom').value=lib.nom||'';
+  document.getElementById('lf-marque').value=lib.marque||'';
+  document.getElementById('lf-type').value=lib.type||'autre';
+  document.getElementById('lf-canaux').value=lib.chDefaut||4;
+  const mode=(lib.modes||[])[0]||{nom:'Default',canaux:[]};
+  document.getElementById('lf-mode').value=mode.nom||'';
+  document.getElementById('lf-chdef').value=(mode.canaux||[]).join(',');
+  showToast(`${lib.nom} charge depuis la bibliotheque`);
 }
 
 function lumSaveFixture(existingId){
