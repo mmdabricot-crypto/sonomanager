@@ -367,88 +367,6 @@ tbody tr:hover td{background:var(--bg)}
       <div class="ft-grid" id="ft-grid"></div>
       <div id="ft-detail" style="display:none"></div>
     </div>
-    <div class="panel" id="panel-scene">
-      <div class="toolbar">
-        <select id="scene-select" onchange="loadSceneByName(this.value)" style="max-width:200px">
-          <option value="">— Sélectionner une scène —</option>
-        </select>
-        <button class="btn primary" onclick="newScene()">＋ Nouvelle scène</button>
-        <button class="btn warn" onclick="saveScene()">💾 Sauvegarder</button>
-        <button class="btn" onclick="exportScenePDF()">⬇ PDF</button>
-        <button class="btn" onclick="sceneUndo()" title="Annuler (Ctrl+Z)" id="btn-undo" style="padding:7px 10px">↩</button>
-        <button class="btn" onclick="sceneRedo()" title="Rétablir (Ctrl+Y)" id="btn-redo" style="padding:7px 10px">↪</button>
-        <button class="btn danger" onclick="deleteSelectedEl()" title="Supprimer l'élément sélectionné" id="btn-del-el">🗑 Supprimer</button>
-      </div>
-      <div class="scene-container">
-        <div class="scene-tools">
-          <div class="tool-section">
-            <div class="tool-section-title">Outils dessin</div>
-            <div class="draw-tools">
-              <div class="draw-btn active" id="tool-select" onclick="setTool('select')">↖ Sel.</div>
-              <div class="draw-btn" id="tool-rect" onclick="setTool('rect')">▭ Rect</div>
-              <div class="draw-btn" id="tool-circle" onclick="setTool('circle')">◯ Cerc.</div>
-              <div class="draw-btn" id="tool-line" onclick="setTool('line')">╱ Ligne</div>
-              <div class="draw-btn" id="tool-text" onclick="setTool('text')">T Texte</div>
-              <div class="draw-btn" id="tool-erase" onclick="setTool('erase')">⌫ Efface</div>
-            </div>
-            <div style="margin-top:8px;display:flex;gap:6px;align-items:center">
-              <input type="color" id="draw-color" value="#1D9E75" style="width:32px;height:28px;border:1px solid var(--border);border-radius:5px;cursor:pointer;padding:2px">
-              <select id="draw-size" style="flex:1;padding:4px;border:1px solid var(--border);border-radius:6px;font-size:12px">
-                <option value="1">Fin</option><option value="2" selected>Normal</option>
-                <option value="4">Épais</option><option value="8">Très épais</option>
-              </select>
-            </div>
-          </div>
-          <div class="tool-section">
-            <div class="tool-section-title">Micros & Son</div>
-            <div class="tool-item" draggable="true" ondragstart="dragEl(event,'micro')" onclick="addSceneEl('micro')">🎤 Micro filaire</div>
-            <div class="tool-item" draggable="true" ondragstart="dragEl(event,'hf')" onclick="addSceneEl('hf')">📡 Micro HF</div>
-            <div class="tool-item" draggable="true" ondragstart="dragEl(event,'iem')" onclick="addSceneEl('iem')">🎧 IEM / Ear monitor</div>
-            <div class="tool-item" draggable="true" ondragstart="dragEl(event,'di')" onclick="addSceneEl('di')">⬜ DI Box</div>
-            <div class="tool-item" draggable="true" ondragstart="dragEl(event,'multipaire')" onclick="addSceneEl('multipaire')">🔗 Multipaire</div>
-            <div class="tool-item" draggable="true" ondragstart="dragEl(event,'pied-micro')" onclick="addSceneEl('pied-micro')">🎙 Pied de micro</div>
-          </div>
-          <div class="tool-section">
-            <div class="tool-section-title">Enceintes</div>
-            <div class="tool-item" draggable="true" ondragstart="dragEl(event,'retour')" onclick="addSceneEl('retour')">📢 Retour scène</div>
-            <div class="tool-item" draggable="true" ondragstart="dragEl(event,'hp')" onclick="addSceneEl('hp')">🔊 Enceinte diffusion</div>
-            <div class="tool-item" draggable="true" ondragstart="dragEl(event,'sub')" onclick="addSceneEl('sub')">⬛ Caisson de basse</div>
-            <div class="tool-item" draggable="true" ondragstart="dragEl(event,'amp')" onclick="addSceneEl('amp')">🔌 Ampli</div>
-          </div>
-          <div class="tool-section">
-            <div class="tool-section-title">Claviers & Cordes</div>
-            <div class="tool-item" draggable="true" ondragstart="dragEl(event,'clavier')" onclick="addSceneEl('clavier')">🎹 Clavier</div>
-            <div class="tool-item" draggable="true" ondragstart="dragEl(event,'clavier2')" onclick="addSceneEl('clavier2')">🎹 Double clavier</div>
-            <div class="tool-item" draggable="true" ondragstart="dragEl(event,'guitare')" onclick="addSceneEl('guitare')">🎸 Guitare élec.</div>
-            <div class="tool-item" draggable="true" ondragstart="dragEl(event,'basse')" onclick="addSceneEl('basse')">🎸 Basse élec.</div>
-            <div class="tool-item" draggable="true" ondragstart="dragEl(event,'contrebasse')" onclick="addSceneEl('contrebasse')">🎻 Contrebasse</div>
-            <div class="tool-item" draggable="true" ondragstart="dragEl(event,'violon')" onclick="addSceneEl('violon')">🎻 Violon</div>
-          </div>
-          <div class="tool-section">
-            <div class="tool-section-title">Percussions</div>
-            <div class="tool-item" draggable="true" ondragstart="dragEl(event,'batterie')" onclick="addSceneEl('batterie')">🥁 Batterie complète</div>
-            <div class="tool-item" draggable="true" ondragstart="dragEl(event,'cajun')" onclick="addSceneEl('cajun')">📦 Cajun</div>
-            <div class="tool-item" draggable="true" ondragstart="dragEl(event,'congas')" onclick="addSceneEl('congas')">🥁 Congas double</div>
-            <div class="tool-item" draggable="true" ondragstart="dragEl(event,'tom-basse')" onclick="addSceneEl('tom-basse')">🥁 Tom basse</div>
-            <div class="tool-item" draggable="true" ondragstart="dragEl(event,'cloche')" onclick="addSceneEl('cloche')">🔔 Cloche / Cowbell</div>
-          </div>
-          <div class="tool-section">
-            <div class="tool-section-title">Vents & Autres</div>
-            <div class="tool-item" draggable="true" ondragstart="dragEl(event,'saxophone')" onclick="addSceneEl('saxophone')">🎷 Saxophone</div>
-            <div class="tool-item" draggable="true" ondragstart="dragEl(event,'trompette')" onclick="addSceneEl('trompette')">🎺 Trompette</div>
-          </div>
-          <div class="tool-section">
-            <div class="tool-section-title">Scène</div>
-            <div class="tool-item" onclick="addSceneEl('scene-front')" style="background:var(--gray-light)">▬ Devant scène</div>
-            <div class="tool-item" onclick="addSceneEl('scene-back')" style="background:var(--gray-light)">▬ Fond scène</div>
-            <div class="tool-item" onclick="addSceneEl('podium')" style="background:var(--gray-light)">⬛ Podium</div>
-            <div class="tool-item" onclick="addSceneEl('FOH')" style="background:var(--blue-light);color:var(--blue)">⬛ Régie FOH</div>
-          </div>
-        </div>
-        <div id="scene-canvas-wrap" ondrop="dropEl(event)" ondragover="event.preventDefault()">
-          <canvas id="scene-canvas"></canvas>
-        </div>
-      </div>
     </div>
     <div class="panel" id="panel-patch">
       <div class="toolbar">
@@ -488,91 +406,6 @@ tbody tr:hover td{background:var(--bg)}
     </div>
 
     <!-- ══ ÉCLAIRAGE ══ -->
-    <div class="panel" id="panel-lumiere">
-      <div class="lum-tabs">
-        <button class="lum-tab active" onclick="lumShowTab('patch',this)">🔆 Patch DMX</button>
-        <button class="lum-tab" onclick="lumShowTab('visu',this)">📊 Visualisation</button>
-        <button class="lum-tab" onclick="lumShowTab('scenes',this)">🎨 Scènes lumière</button>
-        <button class="lum-tab" onclick="lumShowTab('library',this)">📚 Bibliothèque</button>
-        <button class="lum-tab" onclick="lumShowTab('qlc',this)">💡 QLC+</button>
-        <button class="lum-tab" onclick="lumShowTab('dashboard',this)">📈 Dashboard</button>
-      </div>
-
-      <!-- PATCH DMX -->
-      <div class="lum-panel active" id="lum-tab-patch">
-        <div class="toolbar" style="margin-top:1rem">
-          <button class="btn primary" onclick="lumNewFixture()">＋ Ajouter appareil</button>
-          <button class="btn" onclick="lumImportGDTF()">⬆ Import GDTF</button>
-          <button class="btn" onclick="lumImportQLC()">⬆ Import QLC+</button>
-          <button class="btn blue" onclick="lumNewRig()">＋ Nouveau rig</button>
-          <select id="lum-rig-select" onchange="lumSelectRig(this.value)" style="max-width:180px">
-            <option value="">— Tous les rigs —</option>
-          </select>
-          <button class="btn sm" onclick="lumAutoAddress()">⚡ Auto-adressage</button>
-          <button class="btn sm" onclick="lumCheckConflicts()">⚠ Conflits</button>
-          <button class="btn" onclick="lumExportPDF()">⬇ PDF</button>
-          <button class="btn warn" onclick="lumExportQLC()">💡 Export QLC+</button>
-        </div>
-        <div class="stats-row" id="lum-stats"></div>
-        <div id="lum-patch-grid"></div>
-      </div>
-
-      <!-- VISUALISATION DMX -->
-      <div class="lum-panel" id="lum-tab-visu">
-        <div class="toolbar" style="margin-top:1rem">
-          <select id="lum-visu-univers" onchange="lumRenderVisu()" style="max-width:160px">
-            <option value="1">Univers 1</option>
-          </select>
-          <span style="font-size:12px;color:var(--text2)" id="lum-visu-info"></span>
-        </div>
-        <div id="lum-visu-container"></div>
-        <div style="display:flex;gap:16px;margin-top:12px;flex-wrap:wrap;font-size:12px">
-          <div style="display:flex;align-items:center;gap:6px"><div style="width:16px;height:16px;background:var(--green);border-radius:3px"></div>Canal occupé</div>
-          <div style="display:flex;align-items:center;gap:6px"><div style="width:16px;height:16px;background:var(--red);border-radius:3px"></div>Conflit</div>
-          <div style="display:flex;align-items:center;gap:6px"><div style="width:16px;height:16px;background:var(--bg);border:1px solid var(--border);border-radius:3px"></div>Libre</div>
-        </div>
-      </div>
-
-      <!-- SCÈNES LUMIÈRE -->
-      <div class="lum-panel" id="lum-tab-scenes">
-        <div class="toolbar" style="margin-top:1rem">
-          <button class="btn primary" onclick="lumNewScene()">＋ Nouvelle scène</button>
-          <button class="btn" onclick="lumExportScenesPDF()">⬇ Export PDF</button>
-        </div>
-        <div id="lum-scenes-grid"></div>
-      </div>
-
-      <!-- BIBLIOTHÈQUE -->
-      <div class="lum-panel" id="lum-tab-library">
-        <div class="toolbar" style="margin-top:1rem">
-          <input type="text" id="lum-lib-search" placeholder="Rechercher…" oninput="lumRenderLibrary()" style="max-width:200px">
-          <select id="lum-lib-filter" onchange="lumRenderLibrary()" style="max-width:150px">
-            <option value="">Tous types</option>
-            <option value="par">PAR LED</option>
-            <option value="lyre">Lyre</option>
-            <option value="strobe">Stroboscope</option>
-            <option value="fog">Fog/Haze</option>
-            <option value="led">LED Bar</option>
-            <option value="autre">Autre</option>
-          </select>
-          <button class="btn primary" onclick="lumNewLibFixture()">＋ Ajouter à la bibliothèque</button>
-          <button class="btn" onclick="lumImportGDTF()">⬆ GDTF</button>
-          <button class="btn" onclick="lumImportQLC()">⬆ QLC+</button>
-          <button class="btn" onclick="lumResetLibrary()" title="Réinitialiser avec les appareils par défaut">↺ Défauts</button>
-        </div>
-        <div id="lum-library"></div>
-      </div>
-
-      <!-- CHAMSYS -->
-      <div class="lum-panel" id="lum-tab-qlc">
-        <div style="padding:1rem 0" id="lum-qlc-content"></div>
-      </div>
-
-      <!-- DASHBOARD -->
-      <div class="lum-panel" id="lum-tab-dashboard">
-        <div style="padding:1rem 0" id="lum-dashboard-content"></div>
-      </div>
-    </div>
 
     <div class="panel" id="panel-maintenance">
       <div class="toolbar">
@@ -791,14 +624,14 @@ const MODULES=[
     stats:()=>{const t=S.evenements.length,p=S.evenements.filter(e=>(S.sortie_stock[e.id]||[]).length>0).length;return[`${t} événements`,p?`${p} en cours`:''];}},
   {id:'fiches', icon:'📋', name:'Fiches tech', desc:'Riders & fiches artistes', color:'#185FA5', bg:'linear-gradient(135deg,#185FA5,#002F7A)',
     stats:()=>[`${(S.fiches||[]).length} fiches`,(S.fiches||[]).reduce((a,f)=>a+(f.canaux||[]).length,0)+' canaux']},
-  {id:'scene', icon:'🎭', name:'Plan de scène', desc:'Placement instruments & matériel', color:'#534AB7', bg:'linear-gradient(135deg,#534AB7,#1a1660)',
-    stats:()=>[`${Object.keys(S.scenes||{}).filter(k=>k!=='default').length} scène${Object.keys(S.scenes||{}).filter(k=>k!=='default').length>1?'s':''}`,]},
+  {id:'scene', icon:'🎭', name:'Plan de scène', desc:'StageManager Pro — Application dédiée', color:'#534AB7', bg:'linear-gradient(135deg,#534AB7,#1a1660)',
+    stats:()=>{const n=Object.keys(S.stageScenes||S.scenes||{}).filter(k=>k!=='default').length;return[`${n} scène${n>1?'s':''} sauvegardée${n>1?'s':''}`,"Ouvrir StageManager →"];}},
   {id:'patch', icon:'🎛', name:'Patch console', desc:'Wing Rack · UI24R · XR18', color:'#A32D2D', bg:'linear-gradient(135deg,#A32D2D,#5a1010)',
     stats:()=>{const p=patchData['wing']||[];return[`${p.filter(c=>c&&c.name).length} canaux patchés`,'Wing + SD8 (32ch)'];}},
   {id:'devis', icon:'📄', name:'Devis & Factures', desc:'Gestion commerciale', color:'#0047AB', bg:'linear-gradient(135deg,#0047AB,#001f6b)',
     stats:()=>{const dv=S.devis||[];const ca=dv.filter(d=>d.statut==='payee').reduce((a,d)=>{const{total}=dvCalcTotauxFor(d);return a+total;},0);return[`${dv.length} documents`,`${dvFmt(ca)} € encaissés`];}},
-  {id:'lumiere', icon:'🔆', name:'Éclairage', desc:'Patch DMX · QLC+ · Scènes', color:'#F4A01C', bg:'linear-gradient(135deg,#F4A01C,#a06200)',
-    stats:()=>{const f=S.fixtures||[];const c=lumFindConflicts?.();return[`${f.length} fixture${f.length>1?'s':''}`,c&&c.length?`⚠ ${c.length} conflit${c.length>1?'s':''}`:'✓ Patch OK'];}},
+  {id:'lumiere', icon:'💡', name:'QLC+', desc:'Logiciel éclairage DMX dédié', color:'#F4A01C', bg:'linear-gradient(135deg,#F4A01C,#a06200)',
+    stats:()=>['Logiciel externe','QLC+ recommandé']},
   {id:'maintenance', icon:'🔧', name:'Maintenance', desc:'Pannes & réparations', color:'#5F5E5A', bg:'linear-gradient(135deg,#5F5E5A,#2C2C2A)',
     stats:()=>{const p=S.incidents.filter(i=>i.statut==='panne').length;return[`${S.incidents.length} incidents`,p?`⚠ ${p} panne${p>1?'s':''} active${p>1?'s':''}`:' ✓ Tout OK'];}},
   {id:'snapshots', icon:'📁', name:'Snapshots Wing', desc:'Bibliothèque de configurations', color:'#A32D2D', bg:'linear-gradient(135deg,#A32D2D,#5a1010)',
@@ -890,10 +723,16 @@ function showPanel(name){
   if(name==='inventaire'){renderStats();renderInv();}
   if(name==='evenements')renderEvents();
   if(name==='fiches')renderFiches();
-  if(name==='scene')initScene();
+  if(name==='scene'){
+    window.open('https://stagemanager-nine.vercel.app','_blank');
+    return;
+  }
   if(name==='patch')renderPatch();
   if(name==='devis')renderDevis();
-  if(name==='lumiere')renderLumiere();
+  if(name==='lumiere'){
+    showToast('💡 Utilisez QLC+ pour la gestion de l\'éclairage DMX');
+    return;
+  }
   if(name==='maintenance')renderMaint();
   if(name==='snapshots')renderSnapshots();
 }
@@ -1061,7 +900,7 @@ function openFiche(id){
       <button class="btn warn" onclick="openModal('add-fiche',${f.id})">✏️ Modifier</button>
       <button class="btn primary" onclick="exportFichePDF(${f.id})">⬇ PDF</button>
       <button class="btn blue" onclick="lumOpenPatchFromFicheModal(S.fiches.find(x=>x.id===${f.id}))">🎛 → Patch console</button>
-      <button class="btn" onclick="showPanel('scene');document.getElementById('scene-select').value=${f.id}">🎭 Scène</button>
+      <button class="btn" style="background:var(--purple);color:#fff" onclick="window.open('https://stagemanager-nine.vercel.app','_blank')">🎭 StageManager</button>
     </div>
     <div class="ft-section">
       <div class="ft-section-head">Informations générales</div>
