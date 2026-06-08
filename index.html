@@ -2098,7 +2098,10 @@ function renderEqList(ev, cat, search=''){
     const qte=ex?ex.qte:0;
     // Exclure cet événement du calcul pour éviter le double comptage
     const dispo=dispoOf(m, ev.id);
-    const maxQte=dispo+qte; // ce qu'on peut mettre au total = dispo restante + ce qui est déjà assigné
+    // maxQte = ce qu'on peut assigner = dispo libre + déjà assigné à cet event
+    // mais jamais plus que stock total - pannes
+    const stockNet=Math.max(0, m.qte - (m.panne||0));
+    const maxQte=Math.min(stockNet, dispo + qte);
     const col=catColors[m.cat]||'var(--gray)';
     return`<div style="display:flex;align-items:center;gap:10px;padding:8px 4px;border-bottom:1px solid rgba(0,0,0,0.05)">
       <div style="width:28px;height:28px;border-radius:6px;background:${col}22;border:1.5px solid ${col}55;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">${catEmoji[m.cat]||'📦'}</div>
