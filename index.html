@@ -1920,16 +1920,28 @@ function openModal(type,id){
 
   }else if(type==='config-event'){
     const ev=S.evenements.find(e=>e.id===id);if(!ev)return;
-    title='Matériel — '+ev.nom;
-    body=`<p style="font-size:12px;color:var(--text2);margin-bottom:10px">Quantités pour cet événement :</p>`+
-      S.materiel.map(m=>{const ex=ev.materiel.find(x=>x.matId===m.id),qte=ex?ex.qte:0,dispo=dispoOf(m)+(ex?ex.qte:0);
-        return`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(0,0,0,0.04)">
-          <span class="badge ${m.cat}" style="font-size:10px;flex-shrink:0">${m.cat.slice(0,3)}</span>
-          <span style="flex:1;font-size:13px">${esc(m.nom)}</span>
-          <span style="font-size:11px;color:var(--text2)">dispo:${dispo}</span>
-          <input type="number" min="0" max="${dispo}" value="${qte}" id="eq-${m.id}" style="width:52px;padding:4px 7px;border:1px solid var(--border);border-radius:6px;text-align:center;font-family:'DM Mono',monospace">
-        </div>`;}).join('');
-    footer=`<button class="btn" onclick="closeModal()">Annuler</button><button class="btn primary" onclick="doSaveEvConfig(${id})">Enregistrer</button>`;
+    title='⚙ Matériel — '+ev.nom;
+    const cats=[...new Set(S.materiel.map(m=>m.cat))].filter(Boolean);
+    const catLabels={audio:'🔊 Audio',lumiere:'💡 Lumière',accessoire:'🔧 Accessoire'};
+    body=`
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
+        <input type="text" id="eq-search" placeholder="Rechercher…" oninput="filterEqModal(${id})"
+          style="flex:1;min-width:120px;padding:6px 10px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:12px">
+        <div style="display:flex;gap:4px;flex-wrap:wrap">
+          <button class="btn sm active" id="eq-cat-all" onclick="setEqCat(${id},'')">Tout</button>
+          ${cats.map(c=>`<button class="btn sm" id="eq-cat-${c}" onclick="setEqCat(${id},'${c}')">${catLabels[c]||c}</button>`).join('')}
+        </div>
+      </div>
+      <div id="eq-list" style="max-height:340px;overflow-y:auto">
+        ${renderEqList(ev,'')}
+      </div>`;
+    footer=`
+      <div style="display:flex;gap:6px;align-items:center;flex:1">
+        <span style="font-size:12px;color:var(--text2)" id="eq-selected-count">${(ev.materiel||[]).reduce((a,m)=>a+(m.qte>0?1:0),0)} article(s) sélectionné(s)</span>
+      </div>
+      <button class="btn" onclick="closeModal()">Annuler</button>
+      <button class="btn primary" onclick="doSaveEvConfig(${id})">Enregistrer</button>`;
+  
   }else if(type==='add-maint'){
     title='Déclarer un incident';
     const opts=S.materiel.map(m=>`<option value="${m.id}" ${id===m.id?'selected':''}>${esc(m.nom)}</option>`).join('');
@@ -2008,7 +2020,77 @@ function doAddEvent(existingId){
   save();closeModal();renderEvents();
 }
 
-function doSaveEvConfig(evId){const ev=S.evenements.find(e=>e.id===evId);if(!ev)return;ev.materiel=[];S.materiel.forEach(m=>{const el=document.getElementById('eq-'+m.id);if(el){const q=parseInt(el.value)||0;if(q>0)ev.materiel.push({matId:m.id,qte:q});}});save();closeModal();renderEvents();}
+let _eqActiveCat='';
+
+function renderEqList(ev, cat, search=''){
+  const items=S.materiel.filter(m=>{
+    if(cat&&m.cat!==cat)return false;
+    if(search&&!m.nom.toLowerCase().includes(search.toLowerCase()))return false;
+    return true;
+  });
+  if(!items.length)return`<div style="padding:20px;text-align:center;font-size:12px;color:var(--text3)">Aucun article trouvé</div>`;
+  const catColors={audio:'var(--blue)',lumiere:'var(--amber)',accessoire:'var(--gray)'};
+  const catEmoji={audio:'🔊',lumiere:'💡',accessoire:'🔧'};
+  return items.map(m=>{
+    const ex=(ev.materiel||[]).find(x=>x.matId===m.id);
+    const qte=ex?ex.qte:0;
+    const dispo=dispoOf(m)+(ex?ex.qte:0);
+    const col=catColors[m.cat]||'var(--gray)';
+    return`<div style="display:flex;align-items:center;gap:10px;padding:8px 4px;border-bottom:1px solid rgba(0,0,0,0.05)">
+      <div style="width:28px;height:28px;border-radius:6px;background:${col}22;border:1.5px solid ${col}55;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">${catEmoji[m.cat]||'📦'}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(m.nom)}</div>
+        <div style="font-size:10px;color:var(--text3)">Dispo : <strong style="color:${dispo>0?'var(--green)':'var(--red)'}">${dispo}</strong></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <button onclick="stepEq(${m.id},-1,${dispo})" style="width:26px;height:26px;border-radius:6px;border:1.5px solid var(--border);background:var(--surface);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--text2)">−</button>
+        <input type="number" min="0" max="${dispo}" value="${qte}" id="eq-${m.id}"
+          onchange="updateEqCount()"
+          style="width:46px;padding:4px 6px;border:1.5px solid var(--border);border-radius:6px;text-align:center;font-family:'DM Mono',monospace;font-size:13px">
+        <button onclick="stepEq(${m.id},1,${dispo})" style="width:26px;height:26px;border-radius:6px;border:1.5px solid var(--green);background:var(--green-light);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--green-dark)">＋</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function stepEq(matId,delta,dispo){
+  const el=document.getElementById('eq-'+matId);if(!el)return;
+  const v=Math.max(0,Math.min(dispo,(parseInt(el.value)||0)+delta));
+  el.value=v;updateEqCount();
+}
+
+function updateEqCount(){
+  const inputs=[...document.querySelectorAll('[id^="eq-"]')].filter(el=>el.type==='number');
+  const count=inputs.filter(el=>parseInt(el.value)>0).length;
+  const c=document.getElementById('eq-selected-count');
+  if(c)c.textContent=count+' article'+(count>1?'s':'')+' sélectionné'+(count>1?'s':'');
+}
+
+function setEqCat(evId,cat){
+  _eqActiveCat=cat;
+  document.querySelectorAll('[id^="eq-cat-"]').forEach(b=>b.classList.remove('active'));
+  document.getElementById('eq-cat-'+(cat||'all'))?.classList.add('active');
+  const ev=S.evenements.find(e=>e.id===evId);if(!ev)return;
+  const search=document.getElementById('eq-search')?.value||'';
+  document.getElementById('eq-list').innerHTML=renderEqList(ev,cat,search);
+}
+
+function filterEqModal(evId){
+  const search=document.getElementById('eq-search')?.value||'';
+  const ev=S.evenements.find(e=>e.id===evId);if(!ev)return;
+  document.getElementById('eq-list').innerHTML=renderEqList(ev,_eqActiveCat,search);
+}
+
+function doSaveEvConfig(evId){
+  const ev=S.evenements.find(e=>e.id===evId);if(!ev)return;
+  ev.materiel=[];
+  S.materiel.forEach(m=>{
+    const el=document.getElementById('eq-'+m.id);
+    if(el){const q=parseInt(el.value)||0;if(q>0)ev.materiel.push({matId:m.id,qte:q});}
+  });
+  save();closeModal();renderEvents();
+  showToast('Matériel sauvegardé — '+(ev.materiel.length)+' article'+(ev.materiel.length>1?'s':''));
+}
 function doAddIncident(){const matId=parseInt(document.getElementById('mi-mat').value),type=document.getElementById('mi-type').value,qte=parseInt(document.getElementById('mi-qte').value)||1,desc=(document.getElementById('mi-desc').value||'').trim();const mat=S.materiel.find(m=>m.id===matId);if(!mat)return;mat.panne=Math.min(mat.qte,mat.panne+qte);S.incidents.push({id:S.nextIId++,matId,statut:type,qte,desc,user:currentUser.name,date:today()});save();closeModal();renderMaint();renderStats();}
 function doSaveFiche(existingId){
   const artiste=(document.getElementById('f-artiste').value||'').trim();if(!artiste){alert('Entrez le nom de l\'artiste.');return;}
