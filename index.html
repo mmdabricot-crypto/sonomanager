@@ -740,9 +740,17 @@ function showPanel(name){
 }
 
 // ═══ INVENTAIRE ═══
-function dispoOf(mat){
+function dispoOf(mat, excludeEvId=null){
+  // Ne compte que les sorties des événements futurs ou en cours (pas les passés)
+  const today_str=today();
   let s=0;
-  S.evenements.forEach(ev=>{const e=(S.sortie_stock[ev.id]||[]).find(x=>x.matId===mat.id);if(e)s+=e.qte;});
+  S.evenements.forEach(ev=>{
+    if(excludeEvId&&ev.id===excludeEvId)return; // exclure l'événement en cours d'édition
+    // Compter seulement si l'événement n'est pas passé
+    if(ev.date&&ev.date<today_str)return;
+    const e=(S.sortie_stock[ev.id]||[]).find(x=>x.matId===mat.id);
+    if(e)s+=e.qte;
+  });
   return Math.max(0,mat.qte-mat.panne-s);
 }
 function renderStats(){
@@ -810,6 +818,7 @@ function renderEvents(){
         <button class="btn sm" onclick="openChecklist(${ev.id})">✅ Checklist</button>
         ${mapsUrl?`<button class="btn sm" onclick="window.open('${mapsUrl}','_blank')">📍 Maps</button>`:''}
         ${gcalUrl?`<button class="btn sm" onclick="window.open('${gcalUrl}','_blank')" title="Ajouter à Google Agenda">📆 Agenda</button>`:''}
+        ${ev.date?`<button class="btn sm" onclick="checkGCalConflict('${ev.date}','${esc(ev.nom)}','${ev.hstart||''}','${ev.hend||''}')" title="Vérifier les conflits dans Google Agenda">🔍 Vérifier conflits</button>`:''}
         <button class="btn sm danger" onclick="delEvent(${ev.id})">🗑</button>
       </div></div>`;
   }).join('');
@@ -822,6 +831,57 @@ function calcDuree(hstart,hend){
   if(mins<0)mins+=1440;
   const h=Math.floor(mins/60),m=mins%60;
   return h>0?(m>0?h+'h'+String(m).padStart(2,'0'):h+'h'):(m+'min');
+}
+
+
+function checkGCalConflict(date, nom, hstart, hend){
+  const sameDay=S.evenements.filter(ev=>ev.date===date);
+  const conflictsSM=sameDay.filter(ev=>ev.nom!==nom);
+  const[y,m,j]=date.split('-');
+  const gcalDayUrl=`https://calendar.google.com/calendar/r/day/${y}/${parseInt(m)}/${parseInt(j)}`;
+  const root=document.getElementById('modal-root');
+  root.innerHTML=`<div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+    <div class="modal" style="max-width:500px">
+      <div class="modal-head"><h3>🔍 Vérification conflits — ${fmtDate(date)}</h3></div>
+      <div class="modal-body">
+        <div style="margin-bottom:14px">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);margin-bottom:8px">📋 Événements SonoManager ce jour</div>
+          ${conflictsSM.length?
+            conflictsSM.map(ev=>`
+              <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--red-light);border-radius:var(--radius);margin-bottom:6px">
+                <span style="font-size:16px">⚠</span>
+                <div>
+                  <div style="font-weight:600;font-size:13px">${esc(ev.nom)}</div>
+                  <div style="font-size:11px;color:var(--text2)">${ev.hstart||''}${ev.hend?' → '+ev.hend:''} · ${esc(ev.lieu||'—')}</div>
+                </div>
+              </div>`).join('')
+            :`<div style="padding:8px 10px;background:var(--green-light);border-radius:var(--radius);font-size:13px;color:var(--green-dark)">✅ Aucun autre événement SonoManager ce jour</div>`
+          }
+          <div style="padding:8px 10px;background:var(--blue-light);border-radius:var(--radius);font-size:13px;color:var(--blue);margin-top:6px;font-weight:500">
+            📅 <strong>${nom}</strong>${hstart?' · '+hstart:''}${hend?' → '+hend:''}
+          </div>
+        </div>
+        <div style="background:var(--bg);border-radius:var(--radius);padding:12px;margin-bottom:10px">
+          <div style="font-size:12px;font-weight:600;margin-bottom:8px">📅 Vérifier dans Google Agenda</div>
+          <div style="font-size:12px;color:var(--text2);margin-bottom:10px">Ouvrez Google Agenda pour voir vos rendez-vous existants ce jour et éviter les doublons.</div>
+          <button class="btn blue" onclick="window.open('${gcalDayUrl}','_blank')" style="width:100%;margin-bottom:6px">📅 Ouvrir Google Agenda — ${fmtDate(date)}</button>
+        </div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:10px">Après vérification, que souhaitez-vous faire ?</div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <button class="btn primary" onclick="addToGCal('${date}','${nom}','${hstart}','${hend}')">✅ Pas de conflit — Ajouter à Google Agenda</button>
+          <button class="btn warn" onclick="closeModal()">⚠ Conflit détecté — Annuler et modifier l'événement</button>
+          <button class="btn" onclick="closeModal()">Fermer</button>
+        </div>
+      </div>
+    </div></div>`;
+}
+
+function addToGCal(date, nom, hstart, hend){
+  const ev={date,nom,hstart,hend,lieu:'',adresse:'',notes:''};
+  const url=buildGCalUrl(ev);
+  if(url)window.open(url,'_blank');
+  closeModal();
+  showToast('Google Agenda ouvert — confirmez l\'ajout');
 }
 
 function buildGCalUrl(ev){
@@ -2036,20 +2096,22 @@ function renderEqList(ev, cat, search=''){
   return items.map(m=>{
     const ex=(ev.materiel||[]).find(x=>x.matId===m.id);
     const qte=ex?ex.qte:0;
-    const dispo=dispoOf(m)+(ex?ex.qte:0);
+    // Exclure cet événement du calcul pour éviter le double comptage
+    const dispo=dispoOf(m, ev.id);
+    const maxQte=dispo+qte; // ce qu'on peut mettre au total = dispo restante + ce qui est déjà assigné
     const col=catColors[m.cat]||'var(--gray)';
     return`<div style="display:flex;align-items:center;gap:10px;padding:8px 4px;border-bottom:1px solid rgba(0,0,0,0.05)">
       <div style="width:28px;height:28px;border-radius:6px;background:${col}22;border:1.5px solid ${col}55;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">${catEmoji[m.cat]||'📦'}</div>
       <div style="flex:1;min-width:0">
         <div style="font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(m.nom)}</div>
-        <div style="font-size:10px;color:var(--text3)">Dispo : <strong style="color:${dispo>0?'var(--green)':'var(--red)'}">${dispo}</strong></div>
+        <div style="font-size:10px;color:var(--text3)">Dispo : <strong style="color:${maxQte>0?'var(--green)':'var(--red)'}">${maxQte}</strong> / Stock : ${m.qte}</div>
       </div>
       <div style="display:flex;align-items:center;gap:6px">
-        <button onclick="stepEq(${m.id},-1,${dispo})" style="width:26px;height:26px;border-radius:6px;border:1.5px solid var(--border);background:var(--surface);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--text2)">−</button>
-        <input type="number" min="0" max="${dispo}" value="${qte}" id="eq-${m.id}"
+        <button onclick="stepEq(${m.id},-1,${maxQte})" style="width:26px;height:26px;border-radius:6px;border:1.5px solid var(--border);background:var(--surface);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--text2)">−</button>
+        <input type="number" min="0" max="${maxQte}" value="${qte}" id="eq-${m.id}"
           onchange="updateEqCount()"
           style="width:46px;padding:4px 6px;border:1.5px solid var(--border);border-radius:6px;text-align:center;font-family:'DM Mono',monospace;font-size:13px">
-        <button onclick="stepEq(${m.id},1,${dispo})" style="width:26px;height:26px;border-radius:6px;border:1.5px solid var(--green);background:var(--green-light);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--green-dark)">＋</button>
+        <button onclick="stepEq(${m.id},1,${maxQte})" style="width:26px;height:26px;border-radius:6px;border:1.5px solid var(--green);background:var(--green-light);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--green-dark)">＋</button>
       </div>
     </div>`;
   }).join('');
