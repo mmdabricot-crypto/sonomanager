@@ -458,11 +458,14 @@ tbody tr:hover td{background:var(--bg)}
       <div style="font-weight:700;font-size:15px">👁 Aperçu & Partage</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn primary" id="btn-dl-pdf" onclick="dvExportPDFAndShare()">⬇ Télécharger PDF</button>
+        <button class="btn" id="btn-annexe" onclick="dvToggleAnnexe()" title="Ajouter fiche technique + conditions générales au PDF">📎 Annexe</button>
         <button class="btn" onclick="document.getElementById('share-overlay').style.display='none'" style="color:var(--text2)">✕ Fermer</button>
       </div>
     </div>
     <!-- Aperçu visuel du document -->
     <div id="dv-preview-doc" style="padding:2rem;background:#f5f5f5"></div>
+    <!-- Annexe fiche technique + conditions générales -->
+    <div id="dv-annexe-doc" style="display:none;padding:2rem;background:#f0f0f0;border-top:3px dashed #ccc"></div>
     <!-- Boutons de partage -->
     <div style="padding:1rem 1.25rem;border-top:1px solid var(--border);background:#fff;border-radius:0 0 var(--radius-lg) var(--radius-lg)">
       <div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);margin-bottom:10px">Partager via</div>
@@ -4540,6 +4543,168 @@ function dvOpenShare(){
   if(!navigator.share)document.getElementById('share-native-btn').style.display='none';
 }
 
+// ═══ ANNEXE DEVIS : FICHE TECHNIQUE + CONDITIONS GÉNÉRALES ═══
+let _dvAnnexeOn=false;
+
+function dvToggleAnnexe(){
+  _dvAnnexeOn=!_dvAnnexeOn;
+  const btn=document.getElementById('btn-annexe');
+  const el=document.getElementById('dv-annexe-doc');
+  if(_dvAnnexeOn){
+    btn.style.background='var(--green)';btn.style.color='#fff';btn.style.borderColor='var(--green)';
+    btn.textContent='📎 Annexe ✓';
+    dvRenderAnnexe();
+    el.style.display='block';
+    el.scrollIntoView({behavior:'smooth',block:'start'});
+  }else{
+    btn.style.background='';btn.style.color='';btn.style.borderColor='';
+    btn.textContent='📎 Annexe';
+    el.style.display='none';
+  }
+}
+
+function dvRenderAnnexe(){
+  const d=dvCurrent;if(!d)return;
+  const el=document.getElementById('dv-annexe-doc');if(!el)return;
+  const isF=d.type==='facture';
+  const hCol=isF?'#185FA5':'#BA7517';
+  const fmtD=dt=>{if(!dt)return'—';const[y,m,j]=dt.split('-');return`${j}/${m}/${y}`;};
+
+  // Récupérer la config S/M/L depuis les lignes du devis pour deviner la config
+  const montantTotal=dvCalcTotaux().total;
+  const config=montantTotal<500?'S':montantTotal<1500?'M':'L';
+  const configLabels={S:'Petite (Config S — jusqu\'à 100 pers.)',M:'Moyenne (Config M — jusqu\'à 300 pers.)',L:'Grande (Config L — 300+ pers.)'};
+
+  el.innerHTML=`
+  <div style="background:#fff;padding:2rem;font-family:'DM Sans',sans-serif;font-size:12px;color:#111;max-width:680px;margin:0 auto;box-shadow:0 4px 24px rgba(0,0,0,0.12);border-radius:8px">
+
+    <!-- Titre annexe -->
+    <div style="background:${hCol};padding:12px 20px;margin:-2rem -2rem 1.5rem;border-radius:8px 8px 0 0;display:flex;align-items:center;gap:12px">
+      <img src="${DABRIKSON_LOGO}" style="width:48px;height:48px;object-fit:contain;background:#fff;border-radius:6px;padding:3px" alt="DABRIKSON">
+      <div>
+        <div style="font-size:15px;font-weight:800;color:#fff;letter-spacing:1px">ANNEXE TECHNIQUE & CONDITIONS GÉNÉRALES</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.8)">Document annexe au ${isF?'facture':'devis'} N° ${esc(d.num)} · ${fmtD(d.dateEdition)}</div>
+      </div>
+    </div>
+
+    <!-- SECTION 1 : FICHE TECHNIQUE -->
+    <div style="margin-bottom:1.5rem">
+      <div style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:${hCol};border-bottom:2px solid ${hCol};padding-bottom:6px;margin-bottom:12px">1. FICHE TECHNIQUE — BESOINS ÉLECTRIQUES</div>
+
+      <table style="width:100%;border-collapse:collapse;font-size:11px;margin-bottom:12px">
+        <thead>
+          <tr style="background:${hCol}22">
+            <th style="padding:7px 10px;text-align:left;font-weight:700;color:${hCol}">Configuration</th>
+            <th style="padding:7px 10px;text-align:left;font-weight:700;color:${hCol}">Type prestation</th>
+            <th style="padding:7px 10px;text-align:right;font-weight:700;color:${hCol}">Puissance requise</th>
+            <th style="padding:7px 10px;text-align:right;font-weight:700;color:${hCol}">Circuit minimum</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${[
+            ['Config S ★','Petit événement ≤100 pers.','2–3 kW','1× 16A monophasé'],
+            ['Config M','Événement moyen ≤300 pers.','4–6 kW','2× 16A ou 1× 32A'],
+            ['Config L','Grande prestation 300+ pers.','8–15 kW','32A triphasé ou groupe'],
+          ].map(([c,t,p,e],i)=>`<tr style="background:${i%2===0?'#fff':'#f8f8f8'};${c.includes(config)?'outline:2px solid '+hCol+';font-weight:700':''}" >
+            <td style="padding:8px 10px;border-bottom:1px solid #eee">${c}</td>
+            <td style="padding:8px 10px;border-bottom:1px solid #eee;color:#555">${t}</td>
+            <td style="padding:8px 10px;border-bottom:1px solid #eee;text-align:right;font-family:monospace">${p}</td>
+            <td style="padding:8px 10px;border-bottom:1px solid #eee;text-align:right;font-family:monospace">${e}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+
+      <div style="background:#FFF3CD;border-left:4px solid #BA7517;padding:10px 14px;border-radius:0 6px 6px 0;font-size:11px;margin-bottom:10px">
+        <strong>⚡ Clause électrique obligatoire :</strong> L'organisateur s'engage à fournir une alimentation conforme à la NF C 15-100, 
+        avec protection différentielle 30 mA, mise à la terre fonctionnelle et accès à la coupure générale. 
+        À défaut, DABRIKSON se réserve le droit de refuser l'installation sans pénalité.
+      </div>
+
+      <div style="font-size:11px;color:#555;line-height:1.8">
+        <strong>Matériel fourni par DABRIKSON :</strong> Sonorisation complète (enceintes actives, 
+        ${config==='S'?'console numérique compacte, câblage scène':config==='M'?'console Wing Rack ou numérique, multipaires, retours scène':'console Wing Rack + SD8 AES50, multipaires, retours wedge et IEM'}), 
+        micros et accessoires selon la fiche de prestation.
+      </div>
+    </div>
+
+    <!-- SECTION 2 : CONDITIONS PAIEMENT -->
+    <div style="margin-bottom:1.5rem">
+      <div style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:${hCol};border-bottom:2px solid ${hCol};padding-bottom:6px;margin-bottom:12px">2. CONDITIONS DE PAIEMENT</div>
+      <table style="width:100%;border-collapse:collapse;font-size:11px">
+        <thead>
+          <tr style="background:${hCol}22">
+            <th style="padding:7px 10px;text-align:left;color:${hCol}">Montant devis</th>
+            <th style="padding:7px 10px;text-align:right;color:${hCol}">Acompte à la commande</th>
+            <th style="padding:7px 10px;text-align:right;color:${hCol}">Solde</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${[
+            ['Moins de 300 €','30 % à la signature','70 % avant prestation'],
+            ['300 € à 800 €','40 % à la signature','60 % avant prestation'],
+            ['800 € à 2 000 €','50 % à la signature','50 % avant prestation'],
+            ['Plus de 2 000 €','50 % à la signature','50 % à la livraison de la prestation'],
+          ].map(([m,a,s],i)=>`<tr style="background:${i%2===0?'#fff':'#f8f8f8'}">
+            <td style="padding:7px 10px;border-bottom:1px solid #eee">${m}</td>
+            <td style="padding:7px 10px;border-bottom:1px solid #eee;text-align:right;color:#059669;font-weight:600">${a}</td>
+            <td style="padding:7px 10px;border-bottom:1px solid #eee;text-align:right">${s}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+      <div style="font-size:10px;color:#666;margin-top:8px">Modes de paiement acceptés : virement bancaire (IBAN sur demande) · espèces. 
+      <strong>TVA non applicable — article 293 B du CGI (franchise en base).</strong></div>
+    </div>
+
+    <!-- SECTION 3 : ANNULATION -->
+    <div style="margin-bottom:1.5rem">
+      <div style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:${hCol};border-bottom:2px solid ${hCol};padding-bottom:6px;margin-bottom:12px">3. POLITIQUE D'ANNULATION</div>
+      <table style="width:100%;border-collapse:collapse;font-size:11px;margin-bottom:10px">
+        <thead>
+          <tr style="background:${hCol}22">
+            <th style="padding:7px 10px;text-align:left;color:${hCol}">Délai avant prestation</th>
+            <th style="padding:7px 10px;text-align:right;color:${hCol}">Annulation par l'organisateur</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${[
+            ['Plus de 30 jours','Acompte intégralement remboursé'],
+            ['15 à 30 jours','50% de l\'acompte remboursé'],
+            ['8 à 14 jours','Acompte non remboursable'],
+            ['Moins de 7 jours','100% du montant total dû'],
+          ].map(([d,r],i)=>`<tr style="background:${i%2===0?'#fff':'#f8f8f8'}">
+            <td style="padding:7px 10px;border-bottom:1px solid #eee">${d}</td>
+            <td style="padding:7px 10px;border-bottom:1px solid #eee;text-align:right;color:${i>1?'#A32D2D':'#059669'};font-weight:${i>1?'600':'400'}">${r}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+      <div style="background:#f8f8f8;border-radius:6px;padding:10px 14px;font-size:11px;color:#555">
+        <strong>Annulation par DABRIKSON :</strong> En cas de force majeure (maladie, accident, catastrophe naturelle, 
+        décision administrative), l'acompte versé est intégralement remboursé sans pénalité. 
+        DABRIKSON s'engage à prévenir l'organisateur dans les meilleurs délais.
+      </div>
+    </div>
+
+    <!-- SECTION 4 : SIGNATURE -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:2rem;margin-top:1.5rem;padding-top:1rem;border-top:2px solid ${hCol}">
+      <div>
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:${hCol};margin-bottom:8px">L'ORGANISATEUR</div>
+        <div style="font-size:12px;font-weight:600">${esc(d.client.nom||'—')}</div>
+        <div style="font-size:10px;color:#888;margin-bottom:20px">Lu et approuvé — Bon pour accord</div>
+        <div style="border-bottom:1px solid #ccc;width:100%;height:40px"></div>
+        <div style="font-size:9px;color:#aaa;margin-top:4px">Signature + cachet</div>
+      </div>
+      <div>
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:${hCol};margin-bottom:8px">DABRIKSON</div>
+        <div style="font-size:12px;font-weight:600">DABRIKSON</div>
+        <div style="font-size:10px;color:#888;margin-bottom:20px">Tél: 0690 312083 | dabrikson@gmail.com</div>
+        <div style="border-bottom:1px solid #ccc;width:100%;height:40px"></div>
+        <div style="font-size:9px;color:#aaa;margin-top:4px">Signature</div>
+      </div>
+    </div>
+
+  </div>`;
+}
+
 function dvRenderPreview(){
   const d=dvCurrent;if(!d)return;
   const {sousTotal,remiseMontant,total,acompte,reste}=dvCalcTotaux();
@@ -4649,7 +4814,9 @@ function dvExportPDFAndShare(){
 function dvExportPDF(onDone){
   if(!dvCurrent)return;
   dvRenderPreview();
+  if(_dvAnnexeOn)dvRenderAnnexe();
   const previewHTML=document.getElementById('dv-preview-doc').innerHTML;
+  const annexeHTML=_dvAnnexeOn?(document.getElementById('dv-annexe-doc')?.innerHTML||''):'';
   const d=dvCurrent;
   const win=window.open('','_blank','width=820,height=960');
   if(!win){
@@ -4667,6 +4834,7 @@ body{font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#111;background
 .btn-close{padding:10px 16px;background:#ddd;color:#333;border:none;border-radius:6px;font-size:14px;cursor:pointer}
 .hint{font-size:12px;color:#666;flex:1}
 .doc{padding:24px 32px;max-width:800px;margin:0 auto}
+.annexe-sep{border:none;border-top:3px dashed #ccc;margin:32px 0;page-break-before:always}
 @media print{
   .toolbar{display:none!important}
   body{padding:0}
@@ -4674,18 +4842,22 @@ body{font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#111;background
   @page{margin:12mm;size:A4}
   img{max-width:100%!important}
   *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+  .annexe-sep{margin:0}
 }
 </style></head><body>
 <div class="toolbar">
   <button class="btn-print" onclick="window.print()">🖨️ Imprimer / Enregistrer en PDF</button>
   <button class="btn-close" onclick="window.close()">✕ Fermer</button>
-  <div class="hint">Dans la boîte d'impression → sélectionnez <strong>"Enregistrer en PDF"</strong> comme destination</div>
+  <div class="hint">Dans la boîte d'impression → sélectionnez <strong>"Enregistrer en PDF"</strong> comme destination${_dvAnnexeOn?' · <strong>Annexe incluse (fiche technique + conditions)</strong>':''}</div>
 </div>
-<div class="doc">${previewHTML}</div>
+<div class="doc">
+  ${previewHTML}
+  ${annexeHTML?`<hr class="annexe-sep">${annexeHTML}`:''}
+</div>
 </body></html>`);
   win.document.close();
   if(onDone)onDone(true);
-  showToast('Document ouvert — cliquez Imprimer puis Enregistrer en PDF');
+  showToast(_dvAnnexeOn?'PDF complet avec annexe ouvert ✓':'Document ouvert — cliquez Imprimer puis Enregistrer en PDF');
 }
 
 function dvGetResume(){if(!dvCurrent)return'';const{total}=dvCalcTotaux(),d=dvCurrent;return`${d.type==='facture'?'Facture':'Devis'} N° ${d.num} — DABRIKSON\nClient : ${d.client.nom||'—'}\nPrestation : ${d.objet||'—'}\nDate : ${dvFmtDate(d.datePresta)}\nMontant : ${dvFmt(total)} €\n\nVeuillez trouver ci-joint le document en PDF.\n\n📞 0690 312083 | dabrikson@gmail.com`;}
