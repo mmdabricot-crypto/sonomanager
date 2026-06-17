@@ -753,11 +753,13 @@ function pinBackspace(){
   renderPinDots();
 }
 function logout(){
-  currentUser=null;
-  document.getElementById('screen-app').style.display='none';
-  document.getElementById('screen-login').style.display='flex';
-  renderProfiles();
-  updateAdminMenuVisibility();
+  dvConfirmLeaveIfDirty(()=>{
+    currentUser=null;
+    document.getElementById('screen-app').style.display='none';
+    document.getElementById('screen-login').style.display='flex';
+    renderProfiles();
+    updateAdminMenuVisibility();
+  });
 }
 
 // ═══ PANELS ═══
@@ -784,10 +786,12 @@ const MODULES=[
 ];
 
 function showDashboard(){
-  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
-  document.getElementById('panel-dashboard').classList.add('active');
-  document.getElementById('breadcrumb').style.display='none';
-  renderDashboard();
+  dvConfirmLeaveIfDirty(()=>{
+    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+    document.getElementById('panel-dashboard').classList.add('active');
+    document.getElementById('breadcrumb').style.display='none';
+    renderDashboard();
+  });
 }
 
 function renderDashboard(){
@@ -852,6 +856,17 @@ function renderDashboard(){
 }
 
 function showPanel(name){
+  const leavingDevisEditor=document.getElementById('panel-devis')?.classList.contains('active')
+    &&name!=='devis'
+    &&document.getElementById('dv-editor-view')?.style.display!=='none';
+  if(leavingDevisEditor){
+    dvConfirmLeaveIfDirty(()=>_showPanelNow(name));
+    return;
+  }
+  _showPanelNow(name);
+}
+
+function _showPanelNow(name){
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
   const panel=document.getElementById('panel-'+name);
   if(panel)panel.classList.add('active');
@@ -4555,6 +4570,51 @@ function exportChecklistPDF() {
 
 // ═══ DEVIS & FACTURES ═══
 let dvCurrent=null;
+let dvSavedSnapshot=null; // dernier état sauvegardé (JSON string) pour détecter les modifs non enregistrées
+
+function dvIsDirty(){
+  if(!dvCurrent)return false;
+  return JSON.stringify(dvCurrent)!==dvSavedSnapshot;
+}
+
+function dvConfirmLeaveIfDirty(onProceed){
+  if(!dvIsDirty()){onProceed();return;}
+  const root=document.getElementById('modal-root');
+  root.innerHTML=`<div class="modal-overlay" onclick="if(event.target===this)dvCancelLeave()">
+    <div class="modal" style="max-width:380px">
+      <div class="modal-head"><h3>⚠ Modifications non enregistrées</h3></div>
+      <div class="modal-body">
+        <p style="font-size:13px;color:var(--text2);margin-bottom:16px">
+          Ce ${dvCurrent.type==='facture'?'facture':'devis'} contient des modifications qui n'ont pas été sauvegardées.
+          Si vous continuez sans enregistrer, elles seront perdues.
+        </p>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <button class="btn primary" onclick="dvSaveThenLeave()">💾 Enregistrer et continuer</button>
+          <button class="btn danger" onclick="dvDiscardAndLeave()">Continuer sans enregistrer</button>
+          <button class="btn" onclick="dvCancelLeave()">Annuler — revenir à l'édition</button>
+        </div>
+      </div>
+    </div></div>`;
+  _dvPendingLeaveAction=onProceed;
+}
+
+let _dvPendingLeaveAction=null;
+function dvSaveThenLeave(){
+  dvSave();
+  closeModal();
+  const action=_dvPendingLeaveAction;_dvPendingLeaveAction=null;
+  if(action)action();
+}
+function dvDiscardAndLeave(){
+  closeModal();
+  const action=_dvPendingLeaveAction;_dvPendingLeaveAction=null;
+  if(action)action();
+}
+function dvCancelLeave(){
+  closeModal();
+  _dvPendingLeaveAction=null;
+}
+
 function dvDefaultDoc(type){
   const now=new Date(),dateStr=now.toISOString().slice(0,10);
   const count=(S.devis||[]).filter(d=>d.type===type).length+1;
@@ -4571,8 +4631,20 @@ function dvDefaultDoc(type){
 }
 function dvNew(type){dvCurrent=dvDefaultDoc(type);dvShowEditor();}
 function dvEdit(id){if(!S.devis)S.devis=[];dvCurrent=JSON.parse(JSON.stringify(S.devis.find(d=>d.id===id)));if(!dvCurrent)return;dvShowEditor();}
-function dvShowEditor(){document.getElementById('dv-list-view').style.display='none';document.getElementById('dv-editor-view').style.display='block';dvRenderEditor();}
-function dvShowList(){dvCurrent=null;document.getElementById('dv-editor-view').style.display='none';document.getElementById('dv-list-view').style.display='block';renderDevis();}
+function dvShowEditor(){
+  document.getElementById('dv-list-view').style.display='none';
+  document.getElementById('dv-editor-view').style.display='block';
+  dvSavedSnapshot=JSON.stringify(dvCurrent);
+  dvRenderEditor();
+}
+function dvShowList(){
+  dvConfirmLeaveIfDirty(()=>{
+    dvCurrent=null;dvSavedSnapshot=null;
+    document.getElementById('dv-editor-view').style.display='none';
+    document.getElementById('dv-list-view').style.display='block';
+    renderDevis();
+  });
+}
 
 function dvRenderEditor(){
   const d=dvCurrent,isF=d.type==='facture';
@@ -4694,7 +4766,7 @@ function dvUpdateTotaux(){
   document.querySelectorAll('.dv-total-val').forEach((el,i)=>{const l=(dvCurrent.lignes||[])[i];if(l)el.textContent=dvFmt((l.qte||1)*(l.pu||0));});
 }
 
-function dvSave(){if(!S.devis)S.devis=[];const idx=S.devis.findIndex(d=>d.id===dvCurrent.id);if(idx>=0)S.devis[idx]={...dvCurrent};else S.devis.push({...dvCurrent});save();showToast(`✅ ${dvCurrent.type==='facture'?'Facture':'Devis'} sauvegardé`);}
+function dvSave(){if(!S.devis)S.devis=[];const idx=S.devis.findIndex(d=>d.id===dvCurrent.id);if(idx>=0)S.devis[idx]={...dvCurrent};else S.devis.push({...dvCurrent});save();dvSavedSnapshot=JSON.stringify(dvCurrent);showToast(`✅ ${dvCurrent.type==='facture'?'Facture':'Devis'} sauvegardé`);}
 function dvDelete(id){if(!confirm('Supprimer ce document ?'))return;if(!S.devis)return;S.devis=S.devis.filter(d=>d.id!==id);save();dvShowList();}
 function dvConvertToFacture(){if(!confirm('Convertir ce devis en facture ? Le devis original sera conservé.'))return;dvSave();const facture=JSON.parse(JSON.stringify(dvCurrent));facture.id=Date.now();facture.type='facture';facture.statut='impayee';const count=(S.devis||[]).filter(d=>d.type==='facture').length+1;facture.num=`F-${String(count).padStart(3,'0')}-${new Date().getFullYear()}`;facture.dateEdition=new Date().toISOString().slice(0,10);facture.acompte=0;dvCurrent=facture;dvRenderEditor();showToast('🧾 Converti en facture — vérifiez et sauvegardez');}
 
@@ -5680,6 +5752,15 @@ function esc(s){if(!s)return'';return String(s).replace(/&/g,'&amp;').replace(/<
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.style.opacity='1';clearTimeout(t._h);t._h=setTimeout(()=>{t.style.opacity='0';},3500);}
 
 // ═══ INIT ═══
+// ═══ PROTECTION FERMETURE / RECHARGEMENT NAVIGATEUR ═══
+window.addEventListener('beforeunload',function(e){
+  if(dvIsDirty()){
+    e.preventDefault();
+    e.returnValue='';
+    return '';
+  }
+});
+
 initApp();
 </script>
 </body>
