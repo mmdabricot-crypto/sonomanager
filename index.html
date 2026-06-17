@@ -323,6 +323,7 @@ tbody tr:hover td{background:var(--bg)}
       </div>
     </div>
     <div class="topbar-right">
+      <button id="btn-manage-users" class="btn-sm-ui" style="display:none;align-items:center;gap:5px" onclick="openModal('manage-users')">👥 Utilisateurs</button>
       <div id="sync-status"><span id="sync-dot"></span><span id="sync-label" style="font-size:12px;color:var(--text2)">Firebase</span></div>
       <div class="user-chip"><div class="av" id="topbar-av"></div><span id="topbar-name"></span></div>
       <button class="btn-sm-ui" onclick="logout()">Changer</button>
@@ -549,9 +550,17 @@ const DABRIKSON_LOGO=`data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAJUAAAB4CAIA
 let S=null, currentUser=null, syncTimeout=null;
 const LS_KEY='sonomanager_v3';
 
+// ═══ SÉCURITÉ PIN ═══
+async function hashPin(pin){
+  if(!pin)return null;
+  const enc=new TextEncoder().encode('dbk_salt_'+pin);
+  const buf=await crypto.subtle.digest('SHA-256',enc);
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
 function defaultState(){
   return{
-    profiles:[{id:1,name:'Admin',color:'#1D9E75',bg:'#E1F5EE',role:'Administrateur'},{id:2,name:'Tech 1',color:'#185FA5',bg:'#E6F1FB',role:'Technicien'}],
+    profiles:[{id:1,name:'Admin',color:'#1D9E75',bg:'#E1F5EE',role:'admin',pinHash:null},{id:2,name:'Tech 1',color:'#185FA5',bg:'#E6F1FB',role:'technicien',pinHash:null}],
     nextPId:3,materiel:[],nextMId:1,evenements:[],nextEId:1,
     checklist:{},sortie_stock:{},incidents:[],nextIId:1,mouvements:[],nextMvId:1,
     activeEvent:null,fiches:[],nextFId:1,scenes:{},patches:{},devis:[],fixtures:[],rigs:[],lumScenes:[],lumLibrary:null,snapshots:[]
@@ -619,19 +628,53 @@ async function initApp(){
 }
 
 // ═══ PROFILES ═══
+function renderUsersListHTML(){
+  return S.profiles.map(p=>{
+    const ini=p.name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+    const isMe=currentUser&&currentUser.id===p.id;
+    return`<div style="display:flex;align-items:center;gap:10px;padding:8px 4px;border-bottom:1px solid rgba(0,0,0,0.05)">
+      <div style="background:${p.bg};color:${p.color};width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;flex-shrink:0">${ini}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600">${esc(p.name)} ${isMe?'<span style="color:var(--text3);font-size:11px">(vous)</span>':''}</div>
+        <div style="font-size:11px;color:var(--text2)">${roleLabel(p.role)} ${p.pinHash?'· 🔒 PIN actif':'· Pas de PIN'}</div>
+      </div>
+      <button class="btn sm" onclick="openModal('edit-profile',${p.id})">✏</button>
+      <button class="btn sm danger" onclick="doDeleteProfile(${p.id})" ${(isMe||S.profiles.length<=1)?'disabled style="opacity:.4;cursor:not-allowed"':''}>🗑</button>
+    </div>`;
+  }).join('');
+}
+
+function renderUsersList(){
+  const el=document.getElementById('users-list');
+  if(el)el.innerHTML=renderUsersListHTML();
+}
+
+function roleLabel(role){
+  return role==='admin'?'Administrateur':'Technicien';
+}
+
 function renderProfiles(){
   const g=document.getElementById('profile-grid');
   g.innerHTML=S.profiles.map(p=>{
     const ini=p.name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
     return`<button class="profile-btn" onclick="selectProfile(${p.id})">
       <div class="avatar" style="background:${p.bg};color:${p.color}">${ini}</div>
-      <div class="pname">${esc(p.name)}</div><div class="prole">${esc(p.role||'Technicien')}</div>
+      <div class="pname">${esc(p.name)} ${p.pinHash?'🔒':''}</div><div class="prole">${esc(roleLabel(p.role))}</div>
     </button>`;
   }).join('');
 }
 
 function selectProfile(id){
-  currentUser=S.profiles.find(p=>p.id===id);if(!currentUser)return;
+  const profile=S.profiles.find(p=>p.id===id);if(!profile)return;
+  if(profile.pinHash){
+    promptPin(profile);
+  }else{
+    activateProfile(profile);
+  }
+}
+
+function activateProfile(profile){
+  currentUser=profile;
   document.getElementById('screen-login').style.display='none';
   document.getElementById('screen-app').style.display='flex';
   const ini=currentUser.name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
@@ -640,12 +683,81 @@ function selectProfile(id){
   document.getElementById('topbar-name').textContent=currentUser.name;
   setSyncStatus('ok');
   showDashboard();
+  updateAdminMenuVisibility();
+}
+
+function updateAdminMenuVisibility(){
+  const btn=document.getElementById('btn-manage-users');
+  if(btn)btn.style.display=(currentUser&&currentUser.role==='admin')?'flex':'none';
+}
+
+// ═══ SAISIE PIN ═══
+let _pinBuffer='';
+let _pinTargetProfile=null;
+let _pinAttempts=0;
+
+function promptPin(profile){
+  _pinBuffer='';
+  _pinTargetProfile=profile;
+  _pinAttempts=0;
+  const root=document.getElementById('modal-root');
+  root.innerHTML=`<div class="modal-overlay" onclick="if(event.target===this){closeModal();_pinTargetProfile=null;}">
+    <div class="modal" style="max-width:320px;text-align:center">
+      <div class="modal-body" style="padding-top:1.5rem">
+        <div style="background:${profile.bg};color:${profile.color};width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:600;margin:0 auto 12px">${profile.name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2)}</div>
+        <div style="font-weight:700;font-size:16px;margin-bottom:4px">${esc(profile.name)}</div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:16px">Entrez le code PIN</div>
+        <div id="pin-dots" style="display:flex;justify-content:center;gap:10px;margin-bottom:18px"></div>
+        <div id="pin-error" style="color:var(--red);font-size:12px;height:16px;margin-bottom:8px"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;max-width:220px;margin:0 auto">
+          ${[1,2,3,4,5,6,7,8,9].map(n=>`<button class="btn" style="padding:14px;font-size:18px;font-weight:600" onclick="pinPress('${n}')">${n}</button>`).join('')}
+          <button class="btn" style="padding:14px" onclick="closeModal();_pinTargetProfile=null;">✕</button>
+          <button class="btn" style="padding:14px;font-size:18px;font-weight:600" onclick="pinPress('0')">0</button>
+          <button class="btn" style="padding:14px" onclick="pinBackspace()">⌫</button>
+        </div>
+      </div>
+    </div></div>`;
+  renderPinDots();
+}
+
+function renderPinDots(){
+  const el=document.getElementById('pin-dots');if(!el)return;
+  el.innerHTML=Array.from({length:4},(_,i)=>
+    `<div style="width:14px;height:14px;border-radius:50%;border:2px solid var(--border);background:${i<_pinBuffer.length?'var(--green-dark)':'transparent'}"></div>`
+  ).join('');
+}
+
+async function pinPress(digit){
+  if(_pinBuffer.length>=4)return;
+  _pinBuffer+=digit;
+  renderPinDots();
+  if(_pinBuffer.length===4){
+    const hash=await hashPin(_pinBuffer);
+    if(hash===_pinTargetProfile.pinHash){
+      const profile=_pinTargetProfile;
+      _pinTargetProfile=null;_pinBuffer='';
+      closeModal();
+      activateProfile(profile);
+    }else{
+      _pinAttempts++;
+      const errEl=document.getElementById('pin-error');
+      if(errEl)errEl.textContent='Code incorrect';
+      setTimeout(()=>{_pinBuffer='';renderPinDots();},400);
+    }
+  }
+}
+
+function pinBackspace(){
+  _pinBuffer=_pinBuffer.slice(0,-1);
+  document.getElementById('pin-error').textContent='';
+  renderPinDots();
 }
 function logout(){
   currentUser=null;
   document.getElementById('screen-app').style.display='none';
   document.getElementById('screen-login').style.display='flex';
   renderProfiles();
+  updateAdminMenuVisibility();
 }
 
 // ═══ PANELS ═══
@@ -1975,10 +2087,29 @@ function delInc(id){if(!confirm('Supprimer ?'))return;S.incidents=S.incidents.fi
 function openModal(type,id){
   const root=document.getElementById('modal-root');
   let body='',title='',footer='';
-  if(type==='add-profile'){
-    title='Nouveau profil';
-    body=`<div class="field"><label>Nom</label><input id="p-name" type="text" placeholder="Marie T."/></div><div class="field"><label>Rôle</label><input id="p-role" type="text" value="Technicien"/></div>`;
-    footer=`<button class="btn" onclick="closeModal()">Annuler</button><button class="btn primary" onclick="doAddProfile()">Créer</button>`;
+  if(type==='manage-users'){
+    title='👥 Gestion des utilisateurs';
+    body=`<div id="users-list">${renderUsersListHTML()}</div>
+      <button class="btn primary" style="width:100%;margin-top:10px" onclick="closeModal();openModal('add-profile');">＋ Nouveau profil</button>`;
+    footer=`<button class="btn" onclick="closeModal()">Fermer</button>`;
+  }else if(type==='add-profile'||type==='edit-profile'){
+    const p=type==='edit-profile'?S.profiles.find(x=>x.id===id):null;
+    title=p?'Modifier profil':'Nouveau profil';
+    body=`<div class="field"><label>Nom</label><input id="p-name" type="text" placeholder="Marie T." value="${esc(p?.name||'')}"/></div>
+      <div class="field"><label>Rôle</label>
+        <select id="p-role">
+          <option value="technicien" ${(!p||p.role==='technicien')?'selected':''}>Technicien</option>
+          <option value="admin" ${p?.role==='admin'?'selected':''}>Administrateur</option>
+        </select>
+      </div>
+      <div class="field"><label>Code PIN (optionnel — 4 chiffres)</label>
+        <input id="p-pin" type="text" inputmode="numeric" maxlength="4" placeholder="${p?.pinHash?'•••• (déjà défini)':'Laisser vide = aucun PIN'}"/>
+        <div style="font-size:11px;color:var(--text3);margin-top:4px">${p?.pinHash?'Laisser vide pour conserver le PIN actuel. Taper 4 chiffres pour le changer.':'Si renseigné, ce code sera demandé à la connexion.'}</div>
+      </div>
+      ${p?.pinHash?`<button type="button" class="btn sm danger" onclick="doRemovePin(${id})" style="margin-top:4px">🔓 Retirer le PIN</button>`:''}`;
+    footer=p
+      ?`<button class="btn" onclick="closeModal()">Annuler</button><button class="btn primary" onclick="doEditProfile(${id})">Enregistrer</button>`
+      :`<button class="btn" onclick="closeModal()">Annuler</button><button class="btn primary" onclick="doAddProfile()">Créer</button>`;
   }else if(type==='add-mat'){
     title='Ajouter matériel';
     body=`<div class="field"><label>Désignation</label><input id="m-nom" type="text" placeholder="Enceinte RCF…"/></div>
@@ -2089,7 +2220,49 @@ function rRowHtml(r,i){return`<div class="ft-input-row"><span style="min-width:2
 function addCRow(){const l=document.getElementById('c-list');if(!l)return;const i=l.querySelectorAll('.ft-input-row').length;l.insertAdjacentHTML('beforeend',cRowHtml({},i));}
 function addRRow(){const l=document.getElementById('r-list');if(!l)return;const i=l.querySelectorAll('.ft-input-row').length;l.insertAdjacentHTML('beforeend',rRowHtml({},i));}
 function closeModal(){document.getElementById('modal-root').innerHTML='';}
-function doAddProfile(){const name=(document.getElementById('p-name').value||'').trim();if(!name){alert('Entrez un nom.');return;}const role=(document.getElementById('p-role').value||'Technicien').trim();const clrs=['#1D9E75','#185FA5','#BA7517','#A32D2D','#534AB7'],bgs=['#E1F5EE','#E6F1FB','#FAEEDA','#FCEBEB','#EEEDFE'];const i=S.profiles.length%clrs.length;S.profiles.push({id:S.nextPId++,name,role,color:clrs[i],bg:bgs[i]});save();closeModal();renderProfiles();}
+async function doAddProfile(){
+  const name=(document.getElementById('p-name').value||'').trim();
+  if(!name){alert('Entrez un nom.');return;}
+  const role=document.getElementById('p-role').value||'technicien';
+  const pin=(document.getElementById('p-pin').value||'').trim();
+  if(pin&&!/^\d{4}$/.test(pin)){alert('Le PIN doit contenir exactement 4 chiffres.');return;}
+  const clrs=['#1D9E75','#185FA5','#BA7517','#A32D2D','#534AB7'],bgs=['#E1F5EE','#E6F1FB','#FAEEDA','#FCEBEB','#EEEDFE'];
+  const i=S.profiles.length%clrs.length;
+  const pinHash=pin?await hashPin(pin):null;
+  S.profiles.push({id:S.nextPId++,name,role,color:clrs[i],bg:bgs[i],pinHash});
+  save();closeModal();renderProfiles();renderUsersList();
+}
+
+async function doEditProfile(id){
+  const p=S.profiles.find(x=>x.id===id);if(!p)return;
+  const name=(document.getElementById('p-name').value||'').trim();
+  if(!name){alert('Entrez un nom.');return;}
+  const role=document.getElementById('p-role').value||'technicien';
+  const pin=(document.getElementById('p-pin').value||'').trim();
+  if(pin&&!/^\d{4}$/.test(pin)){alert('Le PIN doit contenir exactement 4 chiffres.');return;}
+  p.name=name;p.role=role;
+  if(pin)p.pinHash=await hashPin(pin);
+  save();closeModal();renderProfiles();renderUsersList();
+  showToast('Profil mis à jour');
+}
+
+function doRemovePin(id){
+  const p=S.profiles.find(x=>x.id===id);if(!p)return;
+  if(!confirm(`Retirer le code PIN de ${p.name} ?`))return;
+  p.pinHash=null;
+  save();closeModal();renderProfiles();renderUsersList();
+  showToast('PIN retiré');
+}
+
+function doDeleteProfile(id){
+  const p=S.profiles.find(x=>x.id===id);if(!p)return;
+  if(S.profiles.length<=1){alert('Impossible de supprimer le dernier profil.');return;}
+  if(currentUser&&currentUser.id===id){alert('Vous ne pouvez pas supprimer votre propre profil pendant que vous êtes connecté.');return;}
+  if(!confirm(`Supprimer le profil "${p.name}" ? Cette action est irréversible.`))return;
+  S.profiles=S.profiles.filter(x=>x.id!==id);
+  save();renderProfiles();renderUsersList();
+  showToast('Profil supprimé');
+}
 function doAddMat(){const nom=(document.getElementById('m-nom').value||'').trim();if(!nom){alert('Entrez une désignation.');return;}S.materiel.push({id:S.nextMId++,nom,cat:document.getElementById('m-cat').value,qte:parseInt(document.getElementById('m-qte').value)||1,panne:0,notes:(document.getElementById('m-notes').value||'').trim()});save();closeModal();renderInv();}
 function doEditMat(id){const m=S.materiel.find(x=>x.id===id);if(!m)return;m.nom=(document.getElementById('m-nom').value||m.nom).trim();m.cat=document.getElementById('m-cat').value;m.qte=Math.max(m.panne,parseInt(document.getElementById('m-qte').value)||m.qte);m.notes=(document.getElementById('m-notes').value||'').trim();save();closeModal();renderInv();}
 function doAddEvent(existingId){
