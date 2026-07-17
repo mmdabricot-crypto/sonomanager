@@ -758,14 +758,14 @@ tbody tr:hover td{background:var(--bg)}
 </div>
 
 <div class="search-bar">
-  <input type="text" id="searchInput" placeholder="🔍  Rechercher : XLR, P17, Socapex, Jack, polarité..." oninput="filterContent(this.value)">
+  <input type="text" id="searchInput" placeholder="🔍  Rechercher : XLR, P17, Socapex, Jack, polarité..." oninput="refsFilterContent(this.value)">
 </div>
 
 <div class="tabs">
-  <button class="tab-btn active" onclick="showTab('audio')">🎙 Connectique Audio</button>
-  <button class="tab-btn" onclick="showTab('elec')">⚡ Prises Électriques</button>
-  <button class="tab-btn" onclick="showTab('polarite')">🔄 Polarités & Normes</button>
-  <button class="tab-btn" onclick="showTab('quickref')">📋 Fiche Rapide</button>
+  <button class="tab-btn active" onclick="refsShowTab('audio')">🎙 Connectique Audio</button>
+  <button class="tab-btn" onclick="refsShowTab('elec')">⚡ Prises Électriques</button>
+  <button class="tab-btn" onclick="refsShowTab('polarite')">🔄 Polarités & Normes</button>
+  <button class="tab-btn" onclick="refsShowTab('quickref')">📋 Fiche Rapide</button>
 </div>
 
 <!-- ══════════════════════════════════════════════════════ -->
@@ -1370,61 +1370,7 @@ tbody tr:hover td{background:var(--bg)}
 
 </div><!-- /content -->
 
-<script>
-// ── Tab navigation ─────────────────────────────────────
-function showTab(id) {
-  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
-  event.target.classList.add('active');
-}
 
-// ── Search ─────────────────────────────────────────────
-function filterContent(query) {
-  const q = query.toLowerCase().trim();
-  if (!q) {
-    document.querySelectorAll('.searchable').forEach(el => el.style.display = '');
-    return;
-  }
-  // Show all sections when searching
-  document.querySelectorAll('.section').forEach(s => s.style.display = 'block');
-  document.querySelectorAll('.searchable').forEach(el => {
-    const match = el.textContent.toLowerCase().includes(q);
-    el.style.display = match ? '' : 'none';
-  });
-}
-
-// ── Checklist ──────────────────────────────────────────
-const items = [
-  "✅ Vérifier continuité terre sur toutes les prises P17",
-  "✅ Tester polarité XLR (broche 2 = HOT) avec testeur câble",
-  "✅ Vérifier polarité HP (1+ positif, 1− négatif)",
-  "✅ Contrôler section câbles HP vs puissance ampli",
-  "✅ DDR 30mA présent sur circuit extérieur",
-  "✅ Terminaison 120Ω en bout de ligne DMX",
-  "✅ Pas de boucle de masse (hum check à bas volume)",
-  "✅ P17 bien verrouillées et serrées",
-  "✅ SpeakON cliquetés et verrouillés",
-  "✅ XLR enfoncés et verrou enclenché",
-];
-const cl = document.getElementById('checklist');
-items.forEach(item => {
-  const div = document.createElement('div');
-  div.style.cssText = 'display:flex;align-items:center;gap:10px;padding:6px 10px;background:var(--surface2);border-radius:6px;font-size:13px;cursor:pointer;';
-  const cb = document.createElement('input');
-  cb.type = 'checkbox';
-  cb.style.cssText = 'width:16px;height:16px;accent-color:var(--accent3);cursor:pointer;';
-  const lbl = document.createElement('span');
-  lbl.textContent = item;
-  cb.addEventListener('change', () => {
-    lbl.style.textDecoration = cb.checked ? 'line-through' : '';
-    lbl.style.color = cb.checked ? 'var(--muted)' : '';
-  });
-  div.appendChild(cb); div.appendChild(lbl);
-  div.addEventListener('click', e => { if(e.target !== cb) cb.click(); });
-  cl.appendChild(div);
-});
-</script>
       </div>
     </div>
 <div id="modal-root"></div>
@@ -6752,61 +6698,62 @@ window.addEventListener('beforeunload',function(e){
 initApp();
 </script>
 <script id="refs-script">
+(function() {
+  // ── Tab navigation refs ────────────────────────────
+  window.refsShowTab = function(id, btn) {
+    document.querySelectorAll('#refs-root .section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('#refs-root .tab-btn').forEach(b => b.classList.remove('active'));
+    var el = document.getElementById(id);
+    if(el) el.classList.add('active');
+    if(btn) btn.classList.add('active');
+  };
 
-// ── Tab navigation ─────────────────────────────────────
-function showTab(id) {
-  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
-  event.target.classList.add('active');
-}
+  // ── Search refs ─────────────────────────────────────
+  window.refsFilterContent = function(query) {
+    var q = query.toLowerCase().trim();
+    if (!q) {
+      document.querySelectorAll('#refs-root .searchable').forEach(function(el) { el.style.display = ''; });
+      return;
+    }
+    document.querySelectorAll('#refs-root .section').forEach(function(s) { s.style.display = 'block'; });
+    document.querySelectorAll('#refs-root .searchable').forEach(function(el) {
+      el.style.display = el.textContent.toLowerCase().includes(q) ? '' : 'none';
+    });
+  };
 
-// ── Search ─────────────────────────────────────────────
-function filterContent(query) {
-  const q = query.toLowerCase().trim();
-  if (!q) {
-    document.querySelectorAll('.searchable').forEach(el => el.style.display = '');
-    return;
+  // ── Checklist refs ──────────────────────────────────
+  var refsItems = [
+    "✅ Vérifier continuité terre sur toutes les prises P17",
+    "✅ Tester polarité XLR (broche 2 = HOT) avec testeur câble",
+    "✅ Vérifier polarité HP (1+ positif, 1− négatif)",
+    "✅ Contrôler section câbles HP vs puissance ampli",
+    "✅ DDR 30mA présent sur circuit extérieur",
+    "✅ Terminaison 120Ω en bout de ligne DMX",
+    "✅ Pas de boucle de masse (hum check à bas volume)",
+    "✅ P17 bien verrouillées et serrées",
+    "✅ SpeakON cliquetés et verrouillés",
+    "✅ XLR enfoncés et verrou enclenché",
+  ];
+  var refsCl = document.getElementById('checklist');
+  if(refsCl) {
+    refsItems.forEach(function(item) {
+      var div = document.createElement('div');
+      div.style.cssText = 'display:flex;align-items:center;gap:10px;padding:6px 10px;background:var(--surface2, #22263a);border-radius:6px;font-size:13px;cursor:pointer;';
+      var cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.style.cssText = 'width:16px;height:16px;cursor:pointer;';
+      var lbl = document.createElement('span');
+      lbl.textContent = item;
+      cb.addEventListener('change', function() {
+        lbl.style.textDecoration = cb.checked ? 'line-through' : '';
+        lbl.style.color = cb.checked ? '#666' : '';
+      });
+      div.appendChild(cb); div.appendChild(lbl);
+      div.addEventListener('click', function(e) { if(e.target !== cb) cb.click(); });
+      refsCl.appendChild(div);
+    });
   }
-  // Show all sections when searching
-  document.querySelectorAll('.section').forEach(s => s.style.display = 'block');
-  document.querySelectorAll('.searchable').forEach(el => {
-    const match = el.textContent.toLowerCase().includes(q);
-    el.style.display = match ? '' : 'none';
-  });
-}
-
-// ── Checklist ──────────────────────────────────────────
-const items = [
-  "✅ Vérifier continuité terre sur toutes les prises P17",
-  "✅ Tester polarité XLR (broche 2 = HOT) avec testeur câble",
-  "✅ Vérifier polarité HP (1+ positif, 1− négatif)",
-  "✅ Contrôler section câbles HP vs puissance ampli",
-  "✅ DDR 30mA présent sur circuit extérieur",
-  "✅ Terminaison 120Ω en bout de ligne DMX",
-  "✅ Pas de boucle de masse (hum check à bas volume)",
-  "✅ P17 bien verrouillées et serrées",
-  "✅ SpeakON cliquetés et verrouillés",
-  "✅ XLR enfoncés et verrou enclenché",
-];
-const cl = document.getElementById('checklist');
-items.forEach(item => {
-  const div = document.createElement('div');
-  div.style.cssText = 'display:flex;align-items:center;gap:10px;padding:6px 10px;background:var(--surface2);border-radius:6px;font-size:13px;cursor:pointer;';
-  const cb = document.createElement('input');
-  cb.type = 'checkbox';
-  cb.style.cssText = 'width:16px;height:16px;accent-color:var(--accent3);cursor:pointer;';
-  const lbl = document.createElement('span');
-  lbl.textContent = item;
-  cb.addEventListener('change', () => {
-    lbl.style.textDecoration = cb.checked ? 'line-through' : '';
-    lbl.style.color = cb.checked ? 'var(--muted)' : '';
-  });
-  div.appendChild(cb); div.appendChild(lbl);
-  div.addEventListener('click', e => { if(e.target !== cb) cb.click(); });
-  cl.appendChild(div);
-});
-
+})();
 </script>
 </body>
 </html>
