@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Références — SonoManager DABRIKSON</title>
+<style>
+  :root {
+    --bg:        #0f1117;
+    --surface:   #1a1d27;
+    --surface2:  #22263a;
+    --border:    #2e3350;
+    --accent:    #f5a623;
+    --accent2:   #4fc3f7;
+    --accent3:   #81c784;
+    --danger:    #ef5350;
+    --text:      #e8eaf0;
+    --muted:     #8890a8;
+    --pin-xlr:   #4fc3f7;
+    --pin-jack:  #f5a623;
+    --pin-elec:  #81c784;
+    --pin-live:  #ef5350;
+    --pin-neu:   #4fc3f7;
+    --pin-gnd:   #ffd54f;
+    --pin-pe:    #66bb6a;
+    --radius:    10px;
+    --mono:      'Courier New', monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  /* ── Header ── */
+  .page-header {
+    background: var(--surface);
+    border-bottom: 2px solid var(--accent);
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .page-header h1 {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: .05em;
+  }
+  .page-header span {
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .badge {
+    background: var(--accent);
+    color: #000;
+    font-size: 10px;
+    font-weight: 800;
+    padding: 2px 8px;
+    border-radius: 20px;
+    letter-spacing: .1em;
+  }
+
+  /* ── Search ── */
+  .search-bar {
+    padding: 16px 24px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+  }
+  .search-bar input {
+    width: 100%;
+    max-width: 480px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 8px 14px;
+    color: var(--text);
+    font-size: 14px;
+    outline: none;
+    transition: border-color .2s;
+  }
+  .search-bar input:focus { border-color: var(--accent); }
+  .search-bar input::placeholder { color: var(--muted); }
+
+  /* ── Tabs ── */
+  .tabs {
+    display: flex;
+    gap: 4px;
+    padding: 12px 24px 0;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+  }
+  .tab-btn {
+    background: none;
+    border: none;
+    color: var(--muted);
+    padding: 8px 18px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+    transition: all .2s;
+  }
+  .tab-btn:hover { color: var(--text); }
+  .tab-btn.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+
+  /* ── Layout ── */
+  .content { padding: 24px; max-width: 1100px; margin: 0 auto; }
+  .section { display: none; }
+  .section.active { display: block; }
+
+  .section-title {
+    font-size: 16px;
+    font-weight: 800;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    margin-bottom: 20px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* ── Cards grid ── */
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    transition: border-color .2s;
+  }
+  .card:hover { border-color: var(--accent); }
+  .card-head {
+    background: var(--surface2);
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .card-head h3 { font-size: 14px; font-weight: 700; }
+  .card-icon { font-size: 18px; }
+  .card-body { padding: 14px; }
+
+  /* ── Pin diagram ── */
+  .connector-wrap {
+    display: flex;
+    gap: 24px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .pin-diagram {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 180px;
+  }
+  .pin-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .pin-num {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 800;
+    font-family: var(--mono);
+    flex-shrink: 0;
+  }
+  .pin-label { font-size: 12px; }
+  .pin-label strong { font-size: 13px; }
+  .pin-label small { color: var(--muted); }
+
+  /* Pin colors */
+  .p-live  { background: var(--pin-live);  color: #fff; }
+  .p-neu   { background: var(--pin-neu);   color: #000; }
+  .p-gnd   { background: var(--pin-gnd);   color: #000; }
+  .p-pe    { background: var(--pin-pe);    color: #000; }
+  .p-hot   { background: #ef5350; color: #fff; }
+  .p-cold  { background: #4fc3f7; color: #000; }
+  .p-sh    { background: #616161; color: #fff; }
+  .p-tip   { background: var(--accent);  color: #000; }
+  .p-ring  { background: #7e57c2; color: #fff; }
+  .p-slv   { background: #616161; color: #fff; }
+  .p-blank { background: var(--border); color: var(--muted); }
+
+  /* ── SVG connector drawings ── */
+  .connector-svg { flex-shrink: 0; }
+
+  /* ── Info table ── */
+  .info-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+  .info-table th, .info-table td {
+    text-align: left;
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+  }
+  .info-table th { color: var(--muted); font-weight: 600; text-transform: uppercase; font-size: 10px; }
+  .info-table tr:last-child td { border-bottom: none; }
+
+  /* ── Alert / warning ── */
+  .alert {
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 12px;
+    margin-top: 10px;
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+  }
+  .alert-warn { background: #3d2e00; border-left: 3px solid var(--accent); }
+  .alert-danger { background: #3d0f0f; border-left: 3px solid var(--danger); }
+  .alert-info { background: #0d2a3d; border-left: 3px solid var(--accent2); }
+  .alert-ok { background: #0d2d12; border-left: 3px solid var(--accent3); }
+
+  /* ── Color swatch ── */
+  .swatch {
+    display: inline-block;
+    width: 14px; height: 14px;
+    border-radius: 3px;
+    vertical-align: middle;
+    margin-right: 5px;
+    border: 1px solid rgba(255,255,255,.15);
+  }
+
+  /* ── Polarity note ── */
+  .polarity-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.8;
+    margin-top: 10px;
+  }
+  .pol-pos { color: #ef5350; }
+  .pol-neg { color: #4fc3f7; }
+  .pol-gnd { color: #ffd54f; }
+
+  /* ── Wide card ── */
+  .card-wide {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-bottom: 16px;
+  }
+  .card-wide .card-head { background: var(--surface2); padding: 10px 16px; }
+  .card-wide .card-body { padding: 16px; }
+
+  /* ── P17 diagram ── */
+  .p17-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+  .p17-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+  }
+  .p17-card h4 { font-size: 13px; font-weight: 700; margin-bottom: 8px; color: var(--accent2); }
+  .p17-pins { display: flex; flex-direction: column; gap: 5px; }
+  .p17-pin { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+  .pin-dot {
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px; font-weight: 800; flex-shrink: 0;
+  }
+
+  /* ── Socapex ── */
+  .socapex-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .soca-pin {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 11px;
+    min-width: 120px;
+  }
+  .soca-pin strong { display: block; font-size: 12px; }
+
+  /* ── Search highlight ── */
+  .highlight { background: var(--accent); color: #000; border-radius: 2px; }
+
+  /* ── Responsive ── */
+  @media (max-width: 600px) {
+    .connector-wrap { flex-direction: column; }
+    .cards { grid-template-columns: 1fr; }
+    .content { padding: 14px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <div class="card-icon">⚡</div>
+  <div>
+    <h1>RÉFÉRENCES TECHNIQUES</h1>
+    <span>Câblage audio · Prises électriques · Polarités · Normes</span>
+  </div>
+  <span class="badge">FICHE RÉFLEXE</span>
+</div>
+
+<div class="search-bar">
+  <input type="text" id="searchInput" placeholder="🔍  Rechercher : XLR, P17, Socapex, Jack, polarité..." oninput="filterContent(this.value)">
+</div>
+
+<div class="tabs">
+  <button class="tab-btn active" onclick="showTab('audio')">🎙 Connectique Audio</button>
+  <button class="tab-btn" onclick="showTab('elec')">⚡ Prises Électriques</button>
+  <button class="tab-btn" onclick="showTab('polarite')">🔄 Polarités & Normes</button>
+  <button class="tab-btn" onclick="showTab('quickref')">📋 Fiche Rapide</button>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!--  SECTION 1 : CONNECTIQUE AUDIO                        -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div class="content">
+<div id="audio" class="section active">
+  <div class="section-title">Connectique Audio</div>
+  <div class="cards">
+
+    <!-- XLR 3 broches -->
+    <div class="card searchable">
+      <div class="card-head">
+        <span class="card-icon">🎚</span>
+        <h3>XLR 3 broches — Symétrique</h3>
+      </div>
+      <div class="card-body">
+        <div class="connector-wrap">
+          <svg class="connector-svg" width="80" height="90" viewBox="0 0 80 90">
+            <ellipse cx="40" cy="45" rx="34" ry="38" fill="#2e3350" stroke="#4fc3f7" stroke-width="1.5"/>
+            <circle cx="40" cy="22" r="7" fill="#616161" stroke="#fff" stroke-width="1"/>
+            <text x="40" y="26" text-anchor="middle" fill="#fff" font-size="9" font-weight="bold">1</text>
+            <circle cx="22" cy="58" r="7" fill="#ef5350" stroke="#fff" stroke-width="1"/>
+            <text x="22" y="62" text-anchor="middle" fill="#fff" font-size="9" font-weight="bold">2</text>
+            <circle cx="58" cy="58" r="7" fill="#4fc3f7" stroke="#000" stroke-width="1"/>
+            <text x="58" y="62" text-anchor="middle" fill="#000" font-size="9" font-weight="bold">3</text>
+            <text x="40" y="85" text-anchor="middle" fill="#8890a8" font-size="9">Côté soudure</text>
+          </svg>
+          <div class="pin-diagram">
+            <div class="pin-row">
+              <div class="pin-num p-sh">1</div>
+              <div class="pin-label"><strong>SHIELD / MASSE</strong><br><small>Blindage — GND</small></div>
+            </div>
+            <div class="pin-row">
+              <div class="pin-num p-hot">2</div>
+              <div class="pin-label"><strong>HOT (+)</strong><br><small>Signal positif — Phase</small></div>
+            </div>
+            <div class="pin-row">
+              <div class="pin-num p-cold">3</div>
+              <div class="pin-label"><strong>COLD (−)</strong><br><small>Signal négatif — Retour</small></div>
+            </div>
+          </div>
+        </div>
+        <div class="alert alert-warn">⚠️ <div>Norme AES/IEC : <strong>broche 2 = HOT (+)</strong>. Certains appareils vintage japonais : broche 3 = HOT → vérifier avant connexion.</div></div>
+        <div class="alert alert-info">ℹ️ <div>Câble micro symétrique : torsadé + blindé. Ne jamais souder broche 1 sur le châssis de la fiche mâle XLR sur scène.</div></div>
+      </div>
+    </div>
+
+    <!-- XLR 5 broches DMX -->
+    <div class="card searchable">
+      <div class="card-head">
+        <span class="card-icon">💡</span>
+        <h3>XLR 5 broches — DMX512</h3>
+      </div>
+      <div class="card-body">
+        <div class="pin-diagram">
+          <div class="pin-row"><div class="pin-num p-sh">1</div><div class="pin-label"><strong>MASSE / SHIELD</strong><br><small>GND commune</small></div></div>
+          <div class="pin-row"><div class="pin-num p-hot">2</div><div class="pin-label"><strong>DATA 1 − </strong><br><small>Signal DMX primaire négatif</small></div></div>
+          <div class="pin-row"><div class="pin-num p-cold">3</div><div class="pin-label"><strong>DATA 1 +</strong><br><small>Signal DMX primaire positif</small></div></div>
+          <div class="pin-row"><div class="pin-num p-blank">4</div><div class="pin-label"><strong>DATA 2 −</strong><br><small>Secondaire (rare)</small></div></div>
+          <div class="pin-row"><div class="pin-num p-blank">5</div><div class="pin-label"><strong>DATA 2 +</strong><br><small>Secondaire (rare)</small></div></div>
+        </div>
+        <div class="alert alert-warn">⚠️ <div>Toujours terminer la ligne DMX avec une résistance de <strong>120Ω</strong> en bout de chaîne. Max 32 appareils par univers.</div></div>
+        <div class="alert alert-danger">🚫 <div>Ne jamais utiliser un câble audio XLR 3→5 pour DMX : impédance différente (110Ω DMX vs 75Ω audio).</div></div>
+      </div>
+    </div>
+
+    <!-- Jack 6.35mm TRS -->
+    <div class="card searchable">
+      <div class="card-head">
+        <span class="card-icon">🎸</span>
+        <h3>Jack 6.35mm TRS — Symétrique</h3>
+      </div>
+      <div class="card-body">
+        <div class="connector-wrap">
+          <svg class="connector-svg" width="70" height="90" viewBox="0 0 70 90">
+            <rect x="5" y="10" width="60" height="70" rx="8" fill="#2e3350" stroke="#f5a623" stroke-width="1.5"/>
+            <rect x="14" y="25" width="42" height="10" rx="3" fill="#f5a623"/>
+            <text x="35" y="34" text-anchor="middle" fill="#000" font-size="9" font-weight="bold">TIP</text>
+            <rect x="14" y="42" width="42" height="10" rx="3" fill="#7e57c2"/>
+            <text x="35" y="51" text-anchor="middle" fill="#fff" font-size="9" font-weight="bold">RING</text>
+            <rect x="14" y="59" width="42" height="10" rx="3" fill="#616161"/>
+            <text x="35" y="68" text-anchor="middle" fill="#fff" font-size="9" font-weight="bold">SLEEVE</text>
+          </svg>
+          <div class="pin-diagram">
+            <div class="pin-row"><div class="pin-num p-tip">T</div><div class="pin-label"><strong>TIP — HOT (+)</strong><br><small>Signal positif</small></div></div>
+            <div class="pin-row"><div class="pin-num p-ring">R</div><div class="pin-label"><strong>RING — COLD (−)</strong><br><small>Signal négatif</small></div></div>
+            <div class="pin-row"><div class="pin-num p-slv">S</div><div class="pin-label"><strong>SLEEVE — GND</strong><br><small>Blindage / masse</small></div></div>
+          </div>
+        </div>
+        <table class="info-table" style="margin-top:12px">
+          <tr><th>Config</th><th>Usage</th></tr>
+          <tr><td>TS (2 contacts)</td><td>Instrument / jack mono non sym.</td></tr>
+          <tr><td>TRS (3 contacts)</td><td>Casque stéréo ou ligne symétrique</td></tr>
+          <tr><td>Insert (TRS)</td><td>Tip=Send, Ring=Return, Sleeve=GND</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- Jack 3.5mm -->
+    <div class="card searchable">
+      <div class="card-head">
+        <span class="card-icon">🎧</span>
+        <h3>Mini Jack 3.5mm TRS / TRRS</h3>
+      </div>
+      <div class="card-body">
+        <div class="pin-diagram">
+          <div class="pin-row"><div class="pin-num p-tip">T</div><div class="pin-label"><strong>TIP — Gauche / HOT</strong></div></div>
+          <div class="pin-row"><div class="pin-num p-ring">R</div><div class="pin-label"><strong>RING — Droit / COLD</strong></div></div>
+          <div class="pin-row"><div class="pin-num p-slv">S</div><div class="pin-label"><strong>SLEEVE — GND</strong></div></div>
+        </div>
+        <div class="alert alert-info" style="margin-top:10px">ℹ️ <div>TRRS (4 contacts) : Tip=Gauche, Ring1=Droit, Ring2=GND, Sleeve=Micro. Norme CTIA (Apple/Android récent).</div></div>
+      </div>
+    </div>
+
+    <!-- RCA -->
+    <div class="card searchable">
+      <div class="card-head">
+        <span class="card-icon">📻</span>
+        <h3>RCA / Cinch — Non symétrique</h3>
+      </div>
+      <div class="card-body">
+        <div class="pin-diagram">
+          <div class="pin-row"><div class="pin-num p-hot" style="border-radius:4px">C</div><div class="pin-label"><strong>CENTRE — Signal HOT</strong><br><small>Broche centrale</small></div></div>
+          <div class="pin-row"><div class="pin-num p-slv" style="border-radius:4px">A</div><div class="pin-label"><strong>ANNEAU — GND / Blindage</strong><br><small>Masse</small></div></div>
+        </div>
+        <table class="info-table" style="margin-top:10px">
+          <tr><th>Couleur</th><th>Canal</th></tr>
+          <tr><td><span class="swatch" style="background:#ef5350"></span> Rouge</td><td>Droit (R)</td></tr>
+          <tr><td><span class="swatch" style="background:#fff"></span> Blanc / Noir</td><td>Gauche (L)</td></tr>
+          <tr><td><span class="swatch" style="background:#ffd54f"></span> Jaune</td><td>Vidéo composite</td></tr>
+        </table>
+        <div class="alert alert-warn">⚠️ <div>Signal non symétrique sensible aux parasites. Limiter à 3m en ambiente bruyant. Préférer XLR pour les longues distances.</div></div>
+      </div>
+    </div>
+
+    <!-- SpeakON -->
+    <div class="card searchable">
+      <div class="card-head">
+        <span class="card-icon">🔊</span>
+        <h3>SpeakON NL4 / NL8 — HP</h3>
+      </div>
+      <div class="card-body">
+        <div class="pin-diagram">
+          <div class="pin-row"><div class="pin-num p-hot">1+</div><div class="pin-label"><strong>Canal 1 — Positif</strong><br><small>Ampli → HP voie 1</small></div></div>
+          <div class="pin-row"><div class="pin-num p-cold">1−</div><div class="pin-label"><strong>Canal 1 — Négatif</strong><br><small>Retour voie 1</small></div></div>
+          <div class="pin-row"><div class="pin-num p-blank">2+</div><div class="pin-label"><strong>Canal 2 — Positif</strong><br><small>Bi-amp voie 2 (NL4)</small></div></div>
+          <div class="pin-row"><div class="pin-num p-blank">2−</div><div class="pin-label"><strong>Canal 2 — Négatif</strong></div></div>
+        </div>
+        <div class="alert alert-ok">✅ <div>Connexion verrouillée par rotation. Jamais de déconnexion accidentelle. Standard pro live. Câble min. <strong>2.5mm²</strong> par conducteur.</div></div>
+        <div class="alert alert-danger">🚫 <div>Ne jamais relier le blindage à la masse sur un câble HP SpeakON. Câble HP ≠ câble micro.</div></div>
+      </div>
+    </div>
+
+    <!-- AES/EBU -->
+    <div class="card searchable">
+      <div class="card-head">
+        <span class="card-icon">🔢</span>
+        <h3>AES/EBU — Audio numérique</h3>
+      </div>
+      <div class="card-body">
+        <div class="pin-diagram">
+          <div class="pin-row"><div class="pin-num p-sh">1</div><div class="pin-label"><strong>SHIELD / GND</strong></div></div>
+          <div class="pin-row"><div class="pin-num p-hot">2</div><div class="pin-label"><strong>DATA +</strong><br><small>Signal numérique positif</small></div></div>
+          <div class="pin-row"><div class="pin-num p-cold">3</div><div class="pin-label"><strong>DATA −</strong><br><small>Signal numérique négatif</small></div></div>
+        </div>
+        <table class="info-table" style="margin-top:10px">
+          <tr><th>Paramètre</th><th>Valeur</th></tr>
+          <tr><td>Impédance</td><td>110 Ω</td></tr>
+          <tr><td>Niveau signal</td><td>2–7 V crête à crête</td></tr>
+          <tr><td>Distance max</td><td>~100m (câble qualité)</td></tr>
+          <tr><td>Connecteur</td><td>XLR 3 broches</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- MIDI -->
+    <div class="card searchable">
+      <div class="card-head">
+        <span class="card-icon">🎹</span>
+        <h3>DIN 5 broches — MIDI</h3>
+      </div>
+      <div class="card-body">
+        <div class="pin-diagram">
+          <div class="pin-row"><div class="pin-num p-blank">1</div><div class="pin-label"><strong>Non connecté</strong></div></div>
+          <div class="pin-row"><div class="pin-num p-blank">2</div><div class="pin-label"><strong>SHIELD / GND</strong><br><small>Blindage côté réception</small></div></div>
+          <div class="pin-row"><div class="pin-num p-blank">3</div><div class="pin-label"><strong>Non connecté</strong></div></div>
+          <div class="pin-row"><div class="pin-num p-hot">4</div><div class="pin-label"><strong>DATA +</strong><br><small>Signal MIDI positif (5V)</small></div></div>
+          <div class="pin-row"><div class="pin-num p-cold">5</div><div class="pin-label"><strong>DATA −</strong><br><small>Signal MIDI négatif</small></div></div>
+        </div>
+        <div class="alert alert-info">ℹ️ <div>Connexion optoisolée côté IN. Distance max recommandée : <strong>15m</strong>. Débit : 31 250 baud.</div></div>
+      </div>
+    </div>
+
+  </div><!-- /cards -->
+</div><!-- /audio -->
+
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!--  SECTION 2 : PRISES ÉLECTRIQUES                       -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div id="elec" class="section">
+  <div class="section-title">Prises Électriques Haute Puissance</div>
+
+  <!-- P17 -->
+  <div class="card-wide searchable">
+    <div class="card-head">
+      <span class="card-icon">🔌</span>
+      <h3>Prises P17 — Norme NF C 61-112 / CEI 60309</h3>
+    </div>
+    <div class="card-body">
+      <div class="alert alert-info" style="margin-bottom:14px">ℹ️ <div>Les prises P17 sont identifiées par leur <strong>couleur</strong> (tension) et la <strong>position du détrompeur</strong> (h = heure d'horloge = fréquence). Standard obligatoire pour l'événementiel professionnel en France.</div></div>
+      <div class="p17-grid">
+
+        <div class="p17-card">
+          <h4 style="color:#4fc3f7">🔵 P17 — 2P+T 16A / 230V — Monophasé</h4>
+          <div class="p17-pins">
+            <div class="p17-pin"><div class="pin-dot" style="background:#ef5350;color:#fff">L</div> <span>Phase — <strong style="color:#ef5350">BRUN</strong></span></div>
+            <div class="p17-pin"><div class="pin-dot" style="background:#4fc3f7;color:#000">N</div> <span>Neutre — <strong style="color:#4fc3f7">BLEU</strong></span></div>
+            <div class="p17-pin"><div class="pin-dot" style="background:#66bb6a;color:#000">PE</div> <span>Terre — <strong style="color:#66bb6a">VERT/JAUNE</strong></span></div>
+          </div>
+          <table class="info-table" style="margin-top:8px">
+            <tr><td>Couleur prise</td><td>Bleu</td></tr>
+            <tr><td>Détrompeur</td><td>6h</td></tr>
+            <tr><td>Usage</td><td>Éclairage, sono légère</td></tr>
+          </table>
+        </div>
+
+        <div class="p17-card">
+          <h4 style="color:#ef5350">🔴 P17 — 2P+T 32A / 230V — Monophasé</h4>
+          <div class="p17-pins">
+            <div class="p17-pin"><div class="pin-dot" style="background:#ef5350;color:#fff">L</div> <span>Phase — <strong style="color:#ef5350">BRUN</strong></span></div>
+            <div class="p17-pin"><div class="pin-dot" style="background:#4fc3f7;color:#000">N</div> <span>Neutre — <strong style="color:#4fc3f7">BLEU</strong></span></div>
+            <div class="p17-pin"><div class="pin-dot" style="background:#66bb6a;color:#000">PE</div> <span>Terre — <strong style="color:#66bb6a">VERT/JAUNE</strong></span></div>
+          </div>
+          <table class="info-table" style="margin-top:8px">
+            <tr><td>Couleur prise</td><td>Rouge</td></tr>
+            <tr><td>Détrompeur</td><td>6h</td></tr>
+            <tr><td>Usage</td><td>Amplis, gros éclairage</td></tr>
+          </table>
+        </div>
+
+        <div class="p17-card">
+          <h4 style="color:#ef5350">🔴 P17 — 3P+T 16A / 400V — Triphasé sans neutre</h4>
+          <div class="p17-pins">
+            <div class="p17-pin"><div class="pin-dot" style="background:#ef5350;color:#fff">L1</div> <span>Phase 1 — <strong style="color:#ef5350">BRUN</strong></span></div>
+            <div class="p17-pin"><div class="pin-dot" style="background:#333;color:#fff">L2</div> <span>Phase 2 — <strong>NOIR</strong></span></div>
+            <div class="p17-pin"><div class="pin-dot" style="background:#888;color:#fff">L3</div> <span>Phase 3 — <strong>GRIS</strong></span></div>
+            <div class="p17-pin"><div class="pin-dot" style="background:#66bb6a;color:#000">PE</div> <span>Terre — <strong style="color:#66bb6a">VERT/JAUNE</strong></span></div>
+          </div>
+          <table class="info-table" style="margin-top:8px">
+            <tr><td>Couleur prise</td><td>Rouge</td></tr>
+            <tr><td>Détrompeur</td><td>9h</td></tr>
+            <tr><td>Usage</td><td>Moteurs, gradateurs</td></tr>
+          </table>
+        </div>
+
+        <div class="p17-card">
+          <h4 style="color:#ef5350">🔴 P17 — 3P+N+T 16A / 400V — Triphasé + neutre</h4>
+          <div class="p17-pins">
+            <div class="p17-pin"><div class="pin-dot" style="background:#ef5350;color:#fff">L1</div> <span>Phase 1 — <strong style="color:#ef5350">BRUN</strong></span></div>
+            <div class="p17-pin"><div class="pin-dot" style="background:#333;color:#fff">L2</div> <span>Phase 2 — <strong>NOIR</strong></span></div>
+            <div class="p17-pin"><div class="pin-dot" style="background:#888;color:#fff">L3</div> <span>Phase 3 — <strong>GRIS</strong></span></div>
+            <div class="p17-pin"><div class="pin-dot" style="background:#4fc3f7;color:#000">N</div> <span>Neutre — <strong style="color:#4fc3f7">BLEU</strong></span></div>
+            <div class="p17-pin"><div class="pin-dot" style="background:#66bb6a;color:#000">PE</div> <span>Terre — <strong style="color:#66bb6a">VERT/JAUNE</strong></span></div>
+          </div>
+          <table class="info-table" style="margin-top:8px">
+            <tr><td>Couleur prise</td><td>Rouge</td></tr>
+            <tr><td>Détrompeur</td><td>6h</td></tr>
+            <tr><td>Usage</td><td>Distrib. événementielle complète</td></tr>
+          </table>
+        </div>
+
+        <div class="p17-card">
+          <h4 style="color:#ffd54f">🟡 P17 — 3P+N+T 32A / 400V — Tri + neutre 32A</h4>
+          <div class="p17-pins">
+            <div class="p17-pin"><div class="pin-dot" style="background:#ef5350;color:#fff">L1</div><span>Phase 1 BRUN</span></div>
+            <div class="p17-pin"><div class="pin-dot" style="background:#333;color:#fff">L2</div><span>Phase 2 NOIR</span></div>
+            <div class="p17-pin"><div class="pin-dot" style="background:#888;color:#fff">L3</div><span>Phase 3 GRIS</span></div>
+            <div class="p17-pin"><div class="pin-dot" style="background:#4fc3f7;color:#000">N</div><span>Neutre BLEU</span></div>
+            <div class="p17-pin"><div class="pin-dot" style="background:#66bb6a;color:#000">PE</div><span>Terre VERT/JAUNE</span></div>
+          </div>
+          <table class="info-table" style="margin-top:8px">
+            <tr><td>Couleur prise</td><td>Rouge</td></tr>
+            <tr><td>Détrompeur</td><td>6h</td></tr>
+            <tr><td>Usage</td><td>Grosses installations live</td></tr>
+          </table>
+        </div>
+
+        <div class="p17-card">
+          <h4 style="color:#ffd54f">🟡 P17 — 3P+N+T 63A / 400V</h4>
+          <div class="p17-pins">
+            <div class="p17-pin"><div class="pin-dot" style="background:#ef5350;color:#fff">L1</div><span>Phase 1 BRUN</span></div>
+            <div class="p17-pin"><div class="pin-dot" style="background:#333;color:#fff">L2</div><span>Phase 2 NOIR</span></div>
+            <div class="p17-pin"><div class="pin-dot" style="background:#888;color:#fff">L3</div><span>Phase 3 GRIS</span></div>
+            <div class="p17-pin"><div class="pin-dot" style="background:#4fc3f7;color:#000">N</div><span>Neutre BLEU</span></div>
+            <div class="p17-pin"><div class="pin-dot" style="background:#66bb6a;color:#000">PE</div><span>Terre VERT/JAUNE</span></div>
+          </div>
+          <table class="info-table" style="margin-top:8px">
+            <tr><td>Couleur prise</td><td>Rouge</td></tr>
+            <tr><td>Détrompeur</td><td>6h</td></tr>
+            <tr><td>Usage</td><td>Alimentation scène principale</td></tr>
+          </table>
+        </div>
+
+      </div><!-- /p17-grid -->
+
+      <div class="alert alert-danger" style="margin-top:16px">🚫 <div><strong>RÈGLE ABSOLUE :</strong> La terre (PE) ne doit JAMAIS être déconnectée. Toujours vérifier la continuité terre avant toute mise sous tension. NF C 15-100 obligatoire.</div></div>
+    </div>
+  </div>
+
+  <!-- Socapex -->
+  <div class="card-wide searchable">
+    <div class="card-head">
+      <span class="card-icon">🎭</span>
+      <h3>Socapex 19 broches — Câblage éclairage scène (6 circuits)</h3>
+    </div>
+    <div class="card-body">
+      <p style="color:var(--muted); font-size:12px; margin-bottom:12px">Connecteur multipolaire — 6 circuits 16A monophasé + terre commune. Standard international éclairage spectacle.</p>
+      <div class="socapex-grid">
+        <div class="soca-pin"><strong>Circuit 1</strong> Pin 1 (L1) + Pin 2 (N1)</div>
+        <div class="soca-pin"><strong>Circuit 2</strong> Pin 3 (L2) + Pin 4 (N2)</div>
+        <div class="soca-pin"><strong>Circuit 3</strong> Pin 5 (L3) + Pin 6 (N3)</div>
+        <div class="soca-pin"><strong>Circuit 4</strong> Pin 7 (L4) + Pin 8 (N4)</div>
+        <div class="soca-pin"><strong>Circuit 5</strong> Pin 9 (L5) + Pin 10 (N5)</div>
+        <div class="soca-pin"><strong>Circuit 6</strong> Pin 11 (L6) + Pin 12 (N6)</div>
+        <div class="soca-pin"><strong>Terres ×6</strong> Pins 13–18 (PE par circuit)</div>
+        <div class="soca-pin"><strong>PE commune</strong> Pin 19</div>
+      </div>
+      <div class="alert alert-warn" style="margin-top:12px">⚠️ <div>Max 16A par circuit. Neutre par circuit (pas de neutre commun). Vérifier la phase de chaque circuit avant raccordement gradateur.</div></div>
+    </div>
+  </div>
+
+  <!-- Harting / HAN -->
+  <div class="card-wide searchable">
+    <div class="card-head">
+      <span class="card-icon">🔧</span>
+      <h3>Connecteurs industriels — Harting HAN / PowerCON / Wieland</h3>
+    </div>
+    <div class="card-body">
+      <div class="cards" style="margin-top:0">
+        <div class="card">
+          <div class="card-head"><h3>PowerCON TRUE1 (Neutrik)</h3></div>
+          <div class="card-body">
+            <div class="pin-diagram">
+              <div class="pin-row"><div class="pin-num p-live">L</div><div class="pin-label"><strong>Phase — BRUN</strong></div></div>
+              <div class="pin-row"><div class="pin-num p-neu">N</div><div class="pin-label"><strong>Neutre — BLEU</strong></div></div>
+              <div class="pin-row"><div class="pin-num p-pe">PE</div><div class="pin-label"><strong>Terre — VERT/JAUNE</strong></div></div>
+            </div>
+            <div class="alert alert-ok" style="margin-top:8px">✅ <div>20A — verrouillage par rotation — déconnexion sous charge autorisée (TRUE1 Top). Standard éclairage LED.</div></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3>Wieland GST18 (bleu)</h3></div>
+          <div class="card-body">
+            <div class="pin-diagram">
+              <div class="pin-row"><div class="pin-num p-live">L</div><div class="pin-label"><strong>Phase — BRUN</strong></div></div>
+              <div class="pin-row"><div class="pin-num p-neu">N</div><div class="pin-label"><strong>Neutre — BLEU</strong></div></div>
+              <div class="pin-row"><div class="pin-num p-pe">PE</div><div class="pin-label"><strong>Terre — VERT/JAUNE</strong></div></div>
+            </div>
+            <div class="alert alert-info" style="margin-top:8px">ℹ️ <div>16A / 250V — connexion par encliquetage — très répandu en Allemagne et Scandinavie.</div></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3>Harting HAN 16A/32A</h3></div>
+          <div class="card-body">
+            <p style="font-size:12px;color:var(--muted)">Connecteur industriel rectangulaire. Usage : distributions triphasées, groupes électrogènes, alimentations scène lourde.</p>
+            <table class="info-table">
+              <tr><th>Contacts</th><th>Usage</th></tr>
+              <tr><td>3×L + N + PE</td><td>Triphasé standard</td></tr>
+              <tr><td>Contacts dorés</td><td>Signal / data</td></tr>
+              <tr><td>Corps alu</td><td>IP65 possible</td></tr>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Couleurs câbles -->
+  <div class="card-wide searchable">
+    <div class="card-head">
+      <span class="card-icon">🎨</span>
+      <h3>Code couleur câbles — Norme CEI 60446 (France / Europe)</h3>
+    </div>
+    <div class="card-body">
+      <div class="cards" style="margin-top:0">
+        <div class="card">
+          <div class="card-head"><h3>Monophasé</h3></div>
+          <div class="card-body">
+            <div class="pin-diagram">
+              <div class="pin-row"><div class="pin-num p-live">L</div><div class="pin-label"><span class="swatch" style="background:#8B4513"></span><strong>Phase — BRUN</strong></div></div>
+              <div class="pin-row"><div class="pin-num p-neu">N</div><div class="pin-label"><span class="swatch" style="background:#1565C0"></span><strong>Neutre — BLEU</strong></div></div>
+              <div class="pin-row"><div class="pin-num p-pe">PE</div><div class="pin-label"><span class="swatch" style="background:#2E7D32"></span><strong>Terre — VERT / JAUNE</strong></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3>Triphasé</h3></div>
+          <div class="card-body">
+            <div class="pin-diagram">
+              <div class="pin-row"><div class="pin-num p-live">L1</div><div class="pin-label"><span class="swatch" style="background:#8B4513"></span><strong>BRUN</strong></div></div>
+              <div class="pin-row"><div class="pin-num" style="background:#111;color:#fff;border:1px solid #555">L2</div><div class="pin-label"><span class="swatch" style="background:#111;border:1px solid #555"></span><strong>NOIR</strong></div></div>
+              <div class="pin-row"><div class="pin-num" style="background:#777;color:#fff">L3</div><div class="pin-label"><span class="swatch" style="background:#777"></span><strong>GRIS</strong></div></div>
+              <div class="pin-row"><div class="pin-num p-neu">N</div><div class="pin-label"><span class="swatch" style="background:#1565C0"></span><strong>BLEU</strong></div></div>
+              <div class="pin-row"><div class="pin-num p-pe">PE</div><div class="pin-label"><span class="swatch" style="background:#2E7D32"></span><strong>VERT / JAUNE</strong></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3>⚠️ Ancien code (avant 2004)</h3></div>
+          <div class="card-body">
+            <div class="pin-diagram">
+              <div class="pin-row"><div class="pin-num p-live">L</div><div class="pin-label"><span class="swatch" style="background:#ef5350"></span>Phase — ROUGE (ancien)</div></div>
+              <div class="pin-row"><div class="pin-num p-neu">N</div><div class="pin-label"><span class="swatch" style="background:#111;border:1px solid #555"></span>Neutre — NOIR (ancien)</div></div>
+              <div class="pin-row"><div class="pin-num p-pe">PE</div><div class="pin-label"><span class="swatch" style="background:#2E7D32"></span>Terre — VERT/JAUNE</div></div>
+            </div>
+            <div class="alert alert-danger" style="margin-top:8px">🚫 <div>Installations pré-2004 encore présentes sur le terrain. Toujours vérifier avec un testeur avant intervention.</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /elec -->
+
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!--  SECTION 3 : POLARITÉS & NORMES                       -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div id="polarite" class="section">
+  <div class="section-title">Polarités, Normes & Règles Pro</div>
+  <div class="cards">
+
+    <div class="card searchable">
+      <div class="card-head"><span class="card-icon">🔄</span><h3>Polarité XLR — Norme AES14</h3></div>
+      <div class="card-body">
+        <div class="polarity-box">
+          <span class="pol-pos">Pin 2 = HOT (+) = Signal positif</span><br>
+          <span class="pol-neg">Pin 3 = COLD (−) = Signal négatif</span><br>
+          <span class="pol-gnd">Pin 1 = GND = Blindage / masse</span>
+        </div>
+        <div class="alert alert-warn" style="margin-top:10px">⚠️ <div>Inversion de polarité (broche 2↔3) = déphasage 180°. Sur un système mono, annulation partielle des basses fréquences. Toujours vérifier avec un testeur de câble.</div></div>
+        <table class="info-table" style="margin-top:10px">
+          <tr><th>Appareil</th><th>Broche HOT</th><th>Note</th></tr>
+          <tr><td>Standard EU/US moderne</td><td style="color:var(--accent3)">Pin 2</td><td>AES14 — IEC 60268</td></tr>
+          <tr><td>Vintage japonais (Tascam…)</td><td style="color:var(--danger)">Pin 3</td><td>Vérifier impérativement</td></tr>
+          <tr><td>Neve consoles vintage</td><td style="color:var(--accent3)">Pin 2</td><td>Conforme AES</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="card searchable">
+      <div class="card-head"><span class="card-icon">🔊</span><h3>Polarité HP — Phase acoustique</h3></div>
+      <div class="card-body">
+        <div class="polarity-box">
+          <span class="pol-pos">Borne + (rouge) → Signal + ampli</span><br>
+          <span class="pol-neg">Borne − (noir) → Signal − ampli</span><br>
+          <br>
+          <span style="color:var(--accent3)">SpeakON : 1+ → +, 1− → −</span>
+        </div>
+        <div class="alert alert-danger" style="margin-top:10px">🚫 <div>Inversion de polarité HP sur un système multi-voies = annulation à la fréquence de coupure. Sur 2 enceintes : dépression de basses à l'axe.</div></div>
+        <div class="alert alert-ok">✅ <div>Test rapide : signal impulsion 1kHz → le HP doit se déplacer vers l'avant (vers l'auditeur) sur le signal positif.</div></div>
+      </div>
+    </div>
+
+    <div class="card searchable">
+      <div class="card-head"><span class="card-icon">📏</span><h3>Sections câbles — Tableaux</h3></div>
+      <div class="card-body">
+        <table class="info-table">
+          <tr><th>Section</th><th>Usage</th><th>Courant max</th></tr>
+          <tr><td>0.22 mm²</td><td>Signal micro (blindé)</td><td>—</td></tr>
+          <tr><td>0.75 mm²</td><td>Signal ligne</td><td>—</td></tr>
+          <tr><td>1.5 mm²</td><td>HP 50W, alim légère</td><td>10A</td></tr>
+          <tr><td>2.5 mm²</td><td>HP 200W+, alim 16A</td><td>16A</td></tr>
+          <tr><td>4 mm²</td><td>Alim 32A</td><td>25A</td></tr>
+          <tr><td>6 mm²</td><td>Alim 32A longue distance</td><td>32A</td></tr>
+          <tr><td>10 mm²</td><td>Alim 63A</td><td>50A</td></tr>
+          <tr><td>16 mm²</td><td>Alim 63A+ / triphasé</td><td>63A</td></tr>
+        </table>
+        <div class="alert alert-warn" style="margin-top:8px">⚠️ <div>Toujours surdimensionner de 20% en événementiel (chaleur, longueur, câbles enroulés).</div></div>
+      </div>
+    </div>
+
+    <div class="card searchable">
+      <div class="card-head"><span class="card-icon">⚡</span><h3>Calcul de puissance rapide</h3></div>
+      <div class="card-body">
+        <div class="polarity-box">
+          P (W) = U (V) × I (A) × cos φ<br><br>
+          <span style="color:var(--accent)">Mono 230V :</span> I = P / 230<br>
+          <span style="color:var(--accent)">Tri 400V :</span>  I = P / (400 × √3 × cosφ)<br>
+          <span style="color:var(--accent)">cosφ sono :</span> ~0.8 à 0.95<br><br>
+          <span style="color:var(--accent3)">Ex: 3000W / 230V = 13A → disj. 16A ✓</span>
+        </div>
+        <table class="info-table" style="margin-top:10px">
+          <tr><th>Config</th><th>Puissance maxi</th></tr>
+          <tr><td>1 prise 16A 230V</td><td>~3 680 W</td></tr>
+          <tr><td>1 prise 32A 230V</td><td>~7 360 W</td></tr>
+          <tr><td>Tri 16A 400V</td><td>~11 000 W</td></tr>
+          <tr><td>Tri 32A 400V</td><td>~22 000 W</td></tr>
+          <tr><td>Tri 63A 400V</td><td>~43 000 W</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="card searchable">
+      <div class="card-head"><span class="card-icon">🛡</span><h3>Sécurité électrique — Règles NF C 15-100</h3></div>
+      <div class="card-body">
+        <div class="alert alert-danger">🚫 <div><strong>Interdit :</strong> connecter N et PE ensemble (neutre et terre). Risque électrocution si coupure neutre.</div></div>
+        <div class="alert alert-danger" style="margin-top:8px">🚫 <div><strong>Interdit :</strong> déconnecter la terre en premier / connecter en dernier. Toujours : terre d'abord, terre en dernier.</div></div>
+        <div class="alert alert-ok" style="margin-top:8px">✅ <div><strong>DDR 30mA obligatoire</strong> sur tout circuit alimentation événementielle extérieure (NF C 15-100 §415).</div></div>
+        <div class="alert alert-ok" style="margin-top:8px">✅ <div><strong>Ordre de connexion :</strong> PE → N → L. Ordre de déconnexion : L → N → PE.</div></div>
+        <div class="alert alert-warn" style="margin-top:8px">⚠️ <div>En Guadeloupe : réseau 50Hz 230V/400V. Vérifier la qualité de la terre (résistance &lt;100Ω idéal).</div></div>
+      </div>
+    </div>
+
+    <div class="card searchable">
+      <div class="card-head"><span class="card-icon">📡</span><h3>Masse audio — Boucles de masse</h3></div>
+      <div class="card-body">
+        <div class="polarity-box">
+          Boucle de masse = 2 appareils reliés<br>
+          par GND audio ET par secteur :<br>
+          <span style="color:var(--danger)">→ ronronnement 50Hz (hum)</span><br><br>
+          <span style="color:var(--accent3)">Solution 1 : câble symétrique XLR</span><br>
+          <span style="color:var(--accent3)">Solution 2 : isolateur de masse DI box</span><br>
+          <span style="color:var(--accent3)">Solution 3 : même circuit secteur</span>
+        </div>
+        <div class="alert alert-info" style="margin-top:10px">ℹ️ <div>Lift de masse (ground lift) sur DI box : coupe la broche 1 XLR côté source. À utiliser uniquement si hum confirmé — jamais par défaut.</div></div>
+      </div>
+    </div>
+
+  </div>
+</div><!-- /polarite -->
+
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!--  SECTION 4 : FICHE RAPIDE                             -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div id="quickref" class="section">
+  <div class="section-title">Fiche Réflexe — Référence Rapide Scène</div>
+
+  <div class="card-wide">
+    <div class="card-head"><span class="card-icon">⚡</span><h3>Résumé XLR en 5 secondes</h3></div>
+    <div class="card-body">
+      <div class="polarity-box" style="font-size:14px">
+        <span class="pol-gnd">XLR 1 = MASSE (blindage)</span><br>
+        <span class="pol-pos">XLR 2 = HOT + (signal +)</span><br>
+        <span class="pol-neg">XLR 3 = COLD − (signal −)</span><br><br>
+        <span style="color:var(--accent)">DMX : même brochage — câble 110Ω obligatoire</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card-wide" style="margin-top:12px">
+    <div class="card-head"><span class="card-icon">🔌</span><h3>P17 — Mémo couleurs</h3></div>
+    <div class="card-body">
+      <div class="polarity-box" style="font-size:13px">
+        <span style="color:#4fc3f7">🔵 BLEU   = 2P+T 16A 230V mono</span><br>
+        <span style="color:#ef5350">🔴 ROUGE  = 2P+T 32A ou 3P+T 16/32/63A</span><br>
+        <span style="color:#ffd54f">🟡 JAUNE  = 110V (chantier)</span><br>
+        <span style="color:#fff">⚪ BLANC  = 3P+T 200V–250V (rare)</span><br><br>
+        <span style="color:#66bb6a">PE = VERT/JAUNE toujours</span><br>
+        <span style="color:#4fc3f7">N  = BLEU toujours</span><br>
+        <span style="color:#8B4513; background:#fff; padding:0 3px; border-radius:2px">L1 = BRUN</span>  <span style="color:#ccc">L2 = NOIR</span>  <span style="color:#999">L3 = GRIS</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card-wide" style="margin-top:12px">
+    <div class="card-head"><span class="card-icon">🔊</span><h3>SpeakON NL4 — Connexion standard</h3></div>
+    <div class="card-body">
+      <div class="polarity-box">
+        <span class="pol-pos">1+ → Positif canal 1 (rouge)</span><br>
+        <span class="pol-neg">1− → Négatif canal 1 (noir)</span><br>
+        <span style="color:var(--muted)">2+ → Positif canal 2 (bi-amp)</span><br>
+        <span style="color:var(--muted)">2− → Négatif canal 2 (bi-amp)</span><br><br>
+        <span style="color:var(--accent3)">Câble HP min. 2.5mm² — jamais de blindage</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card-wide" style="margin-top:12px">
+    <div class="card-head"><span class="card-icon">⚠️</span><h3>Check-list départ prestation DABRIKSON</h3></div>
+    <div class="card-body">
+      <div id="checklist" style="display:flex; flex-direction:column; gap:8px; margin-top:4px"></div>
+    </div>
+  </div>
+
+  <div class="card-wide" style="margin-top:12px">
+    <div class="card-head"><span class="card-icon">📐</span><h3>Sections câbles HP — Mémo</h3></div>
+    <div class="card-body">
+      <div class="polarity-box">
+        &lt; 5m   + &lt; 200W  → <span style="color:var(--accent3)">1.5mm²</span><br>
+        &lt; 10m  + &lt; 500W  → <span style="color:var(--accent3)">2.5mm²</span><br>
+        &lt; 20m  + &lt; 1kW   → <span style="color:var(--accent)">4mm²</span><br>
+        &gt; 20m  ou &gt; 1kW  → <span style="color:var(--danger)">6mm²+</span>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /quickref -->
+
+</div><!-- /content -->
+
+<script>
+// ── Tab navigation ─────────────────────────────────────
+function showTab(id) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  event.target.classList.add('active');
+}
+
+// ── Search ─────────────────────────────────────────────
+function filterContent(query) {
+  const q = query.toLowerCase().trim();
+  if (!q) {
+    document.querySelectorAll('.searchable').forEach(el => el.style.display = '');
+    return;
+  }
+  // Show all sections when searching
+  document.querySelectorAll('.section').forEach(s => s.style.display = 'block');
+  document.querySelectorAll('.searchable').forEach(el => {
+    const match = el.textContent.toLowerCase().includes(q);
+    el.style.display = match ? '' : 'none';
+  });
+}
+
+// ── Checklist ──────────────────────────────────────────
+const items = [
+  "✅ Vérifier continuité terre sur toutes les prises P17",
+  "✅ Tester polarité XLR (broche 2 = HOT) avec testeur câble",
+  "✅ Vérifier polarité HP (1+ positif, 1− négatif)",
+  "✅ Contrôler section câbles HP vs puissance ampli",
+  "✅ DDR 30mA présent sur circuit extérieur",
+  "✅ Terminaison 120Ω en bout de ligne DMX",
+  "✅ Pas de boucle de masse (hum check à bas volume)",
+  "✅ P17 bien verrouillées et serrées",
+  "✅ SpeakON cliquetés et verrouillés",
+  "✅ XLR enfoncés et verrou enclenché",
+];
+const cl = document.getElementById('checklist');
+items.forEach(item => {
+  const div = document.createElement('div');
+  div.style.cssText = 'display:flex;align-items:center;gap:10px;padding:6px 10px;background:var(--surface2);border-radius:6px;font-size:13px;cursor:pointer;';
+  const cb = document.createElement('input');
+  cb.type = 'checkbox';
+  cb.style.cssText = 'width:16px;height:16px;accent-color:var(--accent3);cursor:pointer;';
+  const lbl = document.createElement('span');
+  lbl.textContent = item;
+  cb.addEventListener('change', () => {
+    lbl.style.textDecoration = cb.checked ? 'line-through' : '';
+    lbl.style.color = cb.checked ? 'var(--muted)' : '';
+  });
+  div.appendChild(cb); div.appendChild(lbl);
+  div.addEventListener('click', e => { if(e.target !== cb) cb.click(); });
+  cl.appendChild(div);
+});
+</script>
+</body>
+</html>
