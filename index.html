@@ -441,6 +441,7 @@ tbody tr:hover td{background:var(--bg)}
   </div>
 </div>
 
+    <div class="panel" id="panel-references"><iframe src="references.html" style="width:100%;height:calc(100vh - 60px);border:none;border-radius:10px" title="Références DABRIKSON" loading="lazy"></iframe></div>
 <div id="modal-root"></div>
 <div id="toast"></div>
 
@@ -783,6 +784,8 @@ const MODULES=[
     stats:()=>{const p=S.incidents.filter(i=>i.statut==='panne').length;return[`${S.incidents.length} incidents`,p?`⚠ ${p} panne${p>1?'s':''} active${p>1?'s':''}`:' ✓ Tout OK'];}},
   {id:'snapshots', icon:'📁', name:'Snapshots Wing', desc:'Bibliothèque de configurations', color:'#A32D2D', bg:'linear-gradient(135deg,#A32D2D,#5a1010)',
     stats:()=>[`${(S.snapshots||[]).length} snapshot${(S.snapshots||[]).length>1?'s':''}`,]},
+  {id:'references', icon:'⚡', name:'Références', desc:'Câblage audio & électrique', color:'#2C2C2A', bg:'linear-gradient(135deg,#2C2C2A,#1a1a18)',
+    stats:()=>['XLR · Jack · SpeakON','P17 · Socapex · NF C15-100']},
 ];
 
 function showDashboard(){
