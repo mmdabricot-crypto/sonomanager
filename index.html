@@ -780,37 +780,73 @@ tbody tr:hover td{background:var(--bg)}
     <div class="card searchable">
       <div class="card-head">
         <span class="card-icon">🎚</span>
-        <h3>XLR 3 broches — Symétrique</h3>
+        <h3>XLR 3 broches — Symétrique (Mâle &amp; Femelle)</h3>
       </div>
       <div class="card-body">
-        <div class="connector-wrap">
-          <svg class="connector-svg" width="80" height="90" viewBox="0 0 80 90">
-            <ellipse cx="40" cy="45" rx="34" ry="38" fill="#2e3350" stroke="#4fc3f7" stroke-width="1.5"/>
-            <circle cx="40" cy="22" r="7" fill="#616161" stroke="#fff" stroke-width="1"/>
-            <text x="40" y="26" text-anchor="middle" fill="#fff" font-size="9" font-weight="bold">1</text>
-            <circle cx="22" cy="58" r="7" fill="#ef5350" stroke="#fff" stroke-width="1"/>
-            <text x="22" y="62" text-anchor="middle" fill="#fff" font-size="9" font-weight="bold">2</text>
-            <circle cx="58" cy="58" r="7" fill="#4fc3f7" stroke="#000" stroke-width="1"/>
-            <text x="58" y="62" text-anchor="middle" fill="#000" font-size="9" font-weight="bold">3</text>
-            <text x="40" y="85" text-anchor="middle" fill="#8890a8" font-size="9">Côté soudure</text>
-          </svg>
-          <div class="pin-diagram">
-            <div class="pin-row">
-              <div class="pin-num p-sh">1</div>
-              <div class="pin-label"><strong>SHIELD / MASSE</strong><br><small>Blindage — GND</small></div>
+        <div style="display:flex;gap:28px;flex-wrap:wrap;margin-bottom:14px">
+
+          <!-- MALE -->
+          <div style="flex:1;min-width:180px">
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--accent2);margin-bottom:8px">🔵 Mâle (XLR-M) — Sortie / Source</div>
+            <div class="connector-wrap">
+              <svg class="connector-svg" width="80" height="95" viewBox="0 0 80 95">
+                <ellipse cx="40" cy="45" rx="34" ry="38" fill="#2e3350" stroke="#4fc3f7" stroke-width="1.5"/>
+                <!-- Encoche haut mâle -->
+                <rect x="33" y="7" width="14" height="5" rx="2" fill="#4fc3f7"/>
+                <!-- Broche 1 = bas -->
+                <circle cx="40" cy="64" r="7" fill="#616161" stroke="#fff" stroke-width="1"/>
+                <text x="40" y="68" text-anchor="middle" fill="#fff" font-size="9" font-weight="bold">1</text>
+                <!-- Broche 2 = gauche haut -->
+                <circle cx="22" cy="32" r="7" fill="#ef5350" stroke="#fff" stroke-width="1"/>
+                <text x="22" y="36" text-anchor="middle" fill="#fff" font-size="9" font-weight="bold">2</text>
+                <!-- Broche 3 = droite haut -->
+                <circle cx="58" cy="32" r="7" fill="#4fc3f7" stroke="#000" stroke-width="1"/>
+                <text x="58" y="36" text-anchor="middle" fill="#000" font-size="9" font-weight="bold">3</text>
+                <text x="40" y="90" text-anchor="middle" fill="#8890a8" font-size="8">Vue côté soudure</text>
+              </svg>
+              <div class="pin-diagram">
+                <div class="pin-row"><div class="pin-num p-sh">1</div><div class="pin-label"><strong>SHIELD / GND</strong><br><small>Blindage</small></div></div>
+                <div class="pin-row"><div class="pin-num p-hot">2</div><div class="pin-label"><strong>HOT (+)</strong><br><small>Signal positif</small></div></div>
+                <div class="pin-row"><div class="pin-num p-cold">3</div><div class="pin-label"><strong>COLD (−)</strong><br><small>Signal négatif</small></div></div>
+              </div>
             </div>
-            <div class="pin-row">
-              <div class="pin-num p-hot">2</div>
-              <div class="pin-label"><strong>HOT (+)</strong><br><small>Signal positif — Phase</small></div>
-            </div>
-            <div class="pin-row">
-              <div class="pin-num p-cold">3</div>
-              <div class="pin-label"><strong>COLD (−)</strong><br><small>Signal négatif — Retour</small></div>
+          </div>
+
+          <!-- FEMELLE -->
+          <div style="flex:1;min-width:180px">
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--accent);margin-bottom:8px">🟠 Femelle (XLR-F) — Entrée / Destination</div>
+            <div class="connector-wrap">
+              <svg class="connector-svg" width="80" height="95" viewBox="0 0 80 95">
+                <ellipse cx="40" cy="45" rx="34" ry="38" fill="#2e3350" stroke="#f5a623" stroke-width="1.5"/>
+                <!-- Encoche bas femelle -->
+                <rect x="33" y="73" width="14" height="5" rx="2" fill="#f5a623"/>
+                <!-- Broche 1 = haut -->
+                <circle cx="40" cy="26" r="7" fill="#616161" stroke="#fff" stroke-width="1"/>
+                <text x="40" y="30" text-anchor="middle" fill="#fff" font-size="9" font-weight="bold">1</text>
+                <!-- Broche 2 = droite bas (miroir mâle) -->
+                <circle cx="58" cy="58" r="7" fill="#ef5350" stroke="#fff" stroke-width="1"/>
+                <text x="58" y="62" text-anchor="middle" fill="#fff" font-size="9" font-weight="bold">2</text>
+                <!-- Broche 3 = gauche bas -->
+                <circle cx="22" cy="58" r="7" fill="#4fc3f7" stroke="#000" stroke-width="1"/>
+                <text x="22" y="62" text-anchor="middle" fill="#000" font-size="9" font-weight="bold">3</text>
+                <text x="40" y="90" text-anchor="middle" fill="#8890a8" font-size="8">Vue côté soudure</text>
+              </svg>
+              <div class="pin-diagram">
+                <div class="pin-row"><div class="pin-num p-sh">1</div><div class="pin-label"><strong>SHIELD / GND</strong><br><small>Blindage</small></div></div>
+                <div class="pin-row"><div class="pin-num p-hot">2</div><div class="pin-label"><strong>HOT (+)</strong><br><small>Signal positif</small></div></div>
+                <div class="pin-row"><div class="pin-num p-cold">3</div><div class="pin-label"><strong>COLD (−)</strong><br><small>Signal négatif</small></div></div>
+              </div>
             </div>
           </div>
         </div>
-        <div class="alert alert-warn">⚠️ <div>Norme AES/IEC : <strong>broche 2 = HOT (+)</strong>. Certains appareils vintage japonais : broche 3 = HOT → vérifier avant connexion.</div></div>
-        <div class="alert alert-info">ℹ️ <div>Câble micro symétrique : torsadé + blindé. Ne jamais souder broche 1 sur le châssis de la fiche mâle XLR sur scène.</div></div>
+
+        <!-- Règle mémoire -->
+        <div style="background:var(--surface2);border-radius:8px;padding:10px 14px;margin-bottom:10px;font-size:12px">
+          <strong style="color:var(--accent2)">Règle mémo :</strong>
+          <span style="color:var(--text)"> Mâle = broches qui <em>sortent</em> (source, ampli, console OUT) · Femelle = broches qui <em>rentrent</em> (micro, entrée console)</span>
+        </div>
+        <div class="alert alert-warn">⚠️ <div>Norme AES/IEC : <strong>broche 2 = HOT (+)</strong>. Appareils vintage japonais (Tascam…) : broche 3 = HOT → vérifier avant connexion.</div></div>
+        <div class="alert alert-info">ℹ️ <div>Ne jamais souder broche 1 sur le châssis de la fiche mâle sur scène. Câble symétrique : torsadé + blindé.</div></div>
       </div>
     </div>
 
